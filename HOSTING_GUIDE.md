@@ -185,6 +185,17 @@ Create or update your production environment variables.
 
 ## Step 3: Deployment Options
 
+### Current SR Studio Production Setup
+
+SR Studio is currently deployed from the [`srcreativ/srcreativ`](https://github.com/srcreativ/srcreativ) repository to a **Cloudflare Worker** named `srcreativ`.
+
+- **Temporary Cloudflare URL:** `https://srcreativ.srcreativ92.workers.dev`
+- **Hosting provider:** Cloudflare Workers (not GitHub Pages)
+- **Source repository:** `srcreativ/srcreativ`
+- **Why not GitHub Pages:** this app has a server-rendered Nitro/Cloudflare Worker build, so it needs a Worker runtime rather than static-only Pages hosting.
+
+The `workers.dev` URL is useful while preparing the site, but a custom domain is the recommended public address for a client-facing studio website.
+
 ### Option A: Cloudflare Workers (Recommended — Native Zero-Config)
 
 The project's Vite config natively targets Nitro's `cloudflare-module` preset. When you run `npm run build`, it creates `.output/server/wrangler.json` with Cloudflare Workers Assets ready to go.
@@ -202,8 +213,7 @@ npm run build
 npx wrangler login
 
 # 4. Deploy directly from .output/server
-cd .output/server
-npx wrangler deploy
+npx wrangler deploy --config .output/server/wrangler.json --name srcreativ
 ```
 
 #### Method 2: Automatic Git Integration via Cloudflare Dashboard
@@ -219,9 +229,55 @@ npx wrangler deploy
    - `VITE_SUPABASE_PUBLISHABLE_KEY`
    - `SUPABASE_URL`
    - `SUPABASE_PUBLISHABLE_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY`
-5. In **Compatibility flags**, ensure `nodejs_compat` is enabled.
-6. Click **Deploy**.
+5. Only if a server-only feature explicitly needs `SUPABASE_SERVICE_ROLE_KEY`, add it as a **Cloudflare secret**. Never put it in a `VITE_` variable, GitHub repository variable, source file, browser bundle, or commit.
+6. In **Compatibility flags**, ensure `nodejs_compat` is enabled.
+7. Click **Deploy**.
+
+---
+
+## Step 3.1: Add a Custom Domain Safely (Recommended)
+
+### Where to buy the domain
+
+**Recommended: Cloudflare Registrar.** It keeps the domain, DNS, SSL, and Worker in the same account, charges domain registration and renewal at cost, and includes free WHOIS redaction and one-click DNSSEC. It supports many common extensions, but check availability for the exact extension you want before buying.
+
+You may also buy a domain from another reputable registrar, then add that domain to Cloudflare and change its nameservers to the two Cloudflare nameservers shown in the dashboard. Avoid buying “free domain” offers or sharing the registrar account with a developer: the SR Studio owner should control the registrant email, payment method, recovery email, and MFA.
+
+### Before you start
+
+- Buy or transfer the domain using the SR Studio owner's Cloudflare account.
+- Turn on MFA/passkeys for both the Cloudflare and registrar accounts.
+- Keep registrar lock enabled and enable DNSSEC after the domain is active in Cloudflare.
+- Do **not** commit Cloudflare API tokens, registrar passwords, Supabase secrets, or OAuth client secrets. Keep local values in ignored `.env` files and server-only values in Cloudflare Secrets.
+- Decide whether the primary public address will be the root domain (`example.com`) or `www` (`www.example.com`). Use one as canonical and redirect the other.
+
+### Custom-domain launch checklist
+
+When the domain is ready, complete these in order:
+
+1. **Add the domain to Cloudflare.**
+   - If bought at Cloudflare Registrar, it is already in the correct Cloudflare account.
+   - If bought elsewhere, add the site in Cloudflare and replace the registrar nameservers with the Cloudflare nameservers shown during onboarding. Wait until the zone is **Active**.
+2. **Attach it to the `srcreativ` Worker.**
+   - In Cloudflare: **Workers & Pages** > **srcreativ** > **Settings** > **Domains & Routes** > **Add** > **Custom Domain**.
+   - Enter the chosen hostname, such as `example.com` or `www.example.com`, and confirm. Cloudflare creates the Worker DNS record for a custom domain in an active Cloudflare zone.
+   - Do not create a conflicting CNAME record for that same hostname first.
+3. **Enable HTTPS automatically.**
+   - Cloudflare issues the required certificate for the custom domain. Keep SSL/TLS mode set to **Full (strict)** when using a separate origin; for this Worker-origin site, Cloudflare manages the certificate for the attached hostname.
+   - Wait for certificate/DNS propagation, then test `https://your-domain.com` in a private window.
+   - Add a redirect rule so both the root and `www` version lead to the one canonical address you selected.
+4. **Update Supabase and Google OAuth redirect URLs.**
+   - In Supabase: **Authentication** > **URL Configuration**, set **Site URL** to `https://your-domain.com` and add `https://your-domain.com/auth` and `https://your-domain.com/admin` under **Redirect URLs**.
+   - Keep local development entries such as `http://localhost:5173/auth` and `http://localhost:5173/admin`.
+   - In Google Cloud Console > **APIs & Services** > **Credentials** > your OAuth client, verify that the **Authorized redirect URI** includes your Supabase callback: `https://YOUR_PROJECT_REF.supabase.co/auth/v1/callback`. Supabase receives Google's callback, then redirects visitors to your custom domain.
+   - If the Google OAuth client uses **Authorized JavaScript origins**, add `https://your-domain.com`. Do not expose the Google OAuth client secret in this repository or browser code.
+
+### After launch
+
+- Sign in with Google in an incognito/private window.
+- Submit one test inquiry and one admin gallery upload.
+- Confirm `/auth`, `/admin`, and every main navigation link work on the custom domain.
+- Keep the `workers.dev` address as a temporary fallback only; share the custom domain with clients once verification is complete.
 
 ---
 
@@ -375,7 +431,7 @@ sudo certbot --nginx -d srstudio.in -d www.srstudio.in
 | Run locally              | `npm run dev`                              |
 | Test locally             | `npm run test`                             |
 | Build for Cloudflare     | `npm run build`                            |
-| Deploy to Cloudflare     | `cd .output/server && npx wrangler deploy` |
+| Deploy to Cloudflare     | `npm run build && npx wrangler deploy --config .output/server/wrangler.json --name srcreativ` |
 | Build for Vercel         | `NITRO_PRESET=vercel npm run build`        |
 | Build for Node/Docker    | `NITRO_PRESET=node-server npm run build`   |
 | Preview production build | `npm run preview`                          |
