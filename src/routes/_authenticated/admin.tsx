@@ -44,6 +44,27 @@ export const Route = createFileRoute("/_authenticated/admin")({
 
 const CATS = SITE.galleryCategories;
 type GalleryImage = Database["public"]["Tables"]["gallery_images"]["Row"];
+const MAX_GALLERY_FILE_SIZE = 10 * 1024 * 1024;
+
+async function withUploadTimeout<T>(operation: Promise<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () =>
+        reject(
+          new Error(
+            "The upload timed out. Check that the Supabase gallery bucket and storage policies are configured.",
+          ),
+        ),
+      30_000,
+    );
+  });
+  try {
+    return await Promise.race([operation, timeout]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
 
 function Admin() {
   const { user } = Route.useRouteContext();
@@ -439,21 +460,30 @@ function GalleryManager() {
       toast.error("Choose a photo and enter a title");
       return;
     }
+    if (!file.type.startsWith("image/")) {
+      toast.error("Choose a JPG, PNG, or WebP image");
+      return;
+    }
+    if (file.size > MAX_GALLERY_FILE_SIZE) {
+      toast.error("Each gallery photo must be 10 MB or smaller");
+      return;
+    }
     setBusy(true);
     try {
       const path = `${crypto.randomUUID()}.${file.name.split(".").pop() || "jpg"}`;
-      const up = await supabase.storage
-        .from("gallery")
-        .upload(path, file, { contentType: file.type });
+      const up = await withUploadTimeout(
+        supabase.storage
+          .from("gallery")
+          .upload(path, file, { contentType: file.type }),
+      );
       if (up.error) throw up.error;
-      const signed = await supabase.storage
+      const { data: publicUrl } = supabase.storage
         .from("gallery")
-        .createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
-      if (signed.error) throw signed.error;
+        .getPublicUrl(path);
       const ins = await supabase.from("gallery_images").insert({
         title: title.trim().slice(0, 100),
         category: cat,
-        image_url: signed.data.signedUrl,
+        image_url: publicUrl.publicUrl,
         storage_path: path,
         tall,
       });
