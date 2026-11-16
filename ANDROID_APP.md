@@ -24,7 +24,7 @@ git tag android-v1.0.0
 git push origin android-v1.0.0
 ```
 
-GitHub Actions builds the debug APK with Java 17 and adds it to the matching
+GitHub Actions builds the debug APK with Java 21 and adds it to the matching
 GitHub Release. No Supabase keys, passwords, or signing keys are stored in the
 repository.
 
