@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title>SR Studio</title>
+  <rect width="64" height="64" rx="16" fill="#151412"/>
+  <g fill="none" stroke="#d9ae62" stroke-width="3.5" stroke-linejoin="round">
+    <path d="M32 10 46 18v16L32 42 18 34V18z"/>
+    <path d="m32 10 8 14-8 18-8-18zM18 18l14 6 14-6M18 34l14-10 14 10"/>
+  </g>
+  <circle cx="32" cy="27" r="5" fill="#f5eee4"/>
+</svg>

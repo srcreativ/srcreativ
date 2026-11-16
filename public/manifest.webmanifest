@@ -1,0 +1,17 @@
+{
+  "name": "SR Studio Admin",
+  "short_name": "SR Studio",
+  "description": "SR Studio website and gallery management.",
+  "start_url": "/admin",
+  "display": "standalone",
+  "background_color": "#151412",
+  "theme_color": "#151412",
+  "icons": [
+    {
+      "src": "/sr-studio-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

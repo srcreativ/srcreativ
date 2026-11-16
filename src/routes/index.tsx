@@ -41,11 +41,12 @@ import { AdSlot } from "@/components/AdSlot";
 import { DroneShowcase } from "@/components/DroneShowcase";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import ArtistSection from "@/components/ui/artist-section";
+import { SITE } from "@/lib/site-config";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "SR Studio | Cinematic Wedding Photography & Films" },
+      { title: `${SITE.name} | Cinematic Wedding Photography & Films` },
       {
         name: "description",
         content:
@@ -76,11 +77,11 @@ export const Route = createFileRoute("/")({
         children: JSON.stringify({
           "@context": "https://schema.org",
           "@type": "ProfessionalService",
-          name: "SR Studio",
+          name: SITE.name,
           description:
             "Cinematic wedding photography, films and 4K drone videography.",
-          email: "hello@srstudio.in",
-          telephone: "+918114350249",
+          email: SITE.email,
+          telephone: SITE.phone,
           address: {
             "@type": "PostalAddress",
             addressLocality: "Mumbai",
@@ -234,7 +235,7 @@ function Header() {
         <a href="#top" className="flex items-center gap-2">
           <Aperture className="h-6 w-6 text-primary" strokeWidth={1.5} />
           <span className="text-lg font-semibold tracking-[0.25em]">
-            SR STUDIO
+            {SITE.name.toUpperCase()}
           </span>
         </a>
         <nav className="hidden items-center gap-10 md:flex">
@@ -295,7 +296,7 @@ function Hero() {
     >
       {/* Background Marriage Video Preview */}
       <video
-        src="/videos/indian-wedding-ceremony.mp4"
+        src="/videos/indian-wedding.mp4"
         poster={hero}
         autoPlay
         loop
@@ -639,13 +640,13 @@ function Inquiry() {
             proposal, with availability for your date.
           </p>
           <div className="mt-12 space-y-6 text-sm sm:text-base">
-            <a href="mailto:hello@srstudio.in" className="flex items-center gap-4 transition-colors hover:text-primary">
+            <a href={`mailto:${SITE.email}`} className="flex items-center gap-4 transition-colors hover:text-primary">
               <span className="flex h-11 w-11 items-center justify-center rounded-full bg-secondary text-primary"><Mail className="h-5 w-5" /></span>
-              hello@srstudio.in
+              {SITE.email}
             </a>
-            <a href="tel:+918114350249" className="flex items-center gap-4 transition-colors hover:text-primary">
+            <a href={`tel:${SITE.phone}`} className="flex items-center gap-4 transition-colors hover:text-primary">
               <span className="flex h-11 w-11 items-center justify-center rounded-full bg-secondary text-primary"><Phone className="h-5 w-5" /></span>
-              +918114350249
+              {SITE.phone}
             </a>
             <p className="flex items-center gap-4">
               <span className="flex h-11 w-11 items-center justify-center rounded-full bg-secondary text-primary"><MapPin className="h-5 w-5" /></span>
@@ -726,18 +727,18 @@ function Footer() {
         </div>
         <div className="mt-10 flex flex-col items-center justify-center gap-4 text-sm text-muted-foreground md:flex-row md:gap-10">
           <span className="flex items-center gap-2">
-            <Mail className="h-4 w-4 text-primary" /> hello@srstudio.in
+            <Mail className="h-4 w-4 text-primary" /> {SITE.email}
           </span>
           <span className="flex items-center gap-2">
-            <Phone className="h-4 w-4 text-primary" /> +918114350249
+            <Phone className="h-4 w-4 text-primary" /> {SITE.phone}
           </span>
           <span className="flex items-center gap-2">
-            <MapPin className="h-4 w-4 text-primary" /> Mumbai · Available
+            <MapPin className="h-4 w-4 text-primary" /> {SITE.location} · Available
             worldwide
           </span>
         </div>
         <p className="mt-12 text-xs tracking-widest text-muted-foreground/70">
-          © {new Date().getFullYear()} SR STUDIO. ALL RIGHTS RESERVED. ·{" "}
+          © {new Date().getFullYear()} {SITE.name.toUpperCase()}. ALL RIGHTS RESERVED. ·{" "}
           <a href="/admin" className="hover:text-primary">
             ADMIN
           </a>

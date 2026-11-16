@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   Trash2,
@@ -10,21 +10,31 @@ import {
   Users,
   Mail,
   Image as ImageIcon,
+  Bell,
+  BellRing,
+  Check,
+  LockKeyhole,
+  Pencil,
+  Smartphone,
+  X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
+import { AppInstallPrompt } from "@/components/AppInstallPrompt";
+import { SITE } from "@/lib/site-config";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
     meta: [
-      { title: "Admin Panel | SR Studio" },
+      { title: `Admin Panel | ${SITE.name}` },
       {
         name: "description",
-        content: "SR Studio analytics and gallery management.",
+        content: `${SITE.name} analytics and gallery management.`,
       },
-      { property: "og:title", content: "Admin Panel | SR Studio" },
+      { property: "og:title", content: `Admin Panel | ${SITE.name}` },
       {
         property: "og:description",
-        content: "SR Studio analytics and gallery management.",
+        content: `${SITE.name} analytics and gallery management.`,
       },
       { name: "robots", content: "noindex" },
     ],
@@ -32,12 +42,8 @@ export const Route = createFileRoute("/_authenticated/admin")({
   component: Admin,
 });
 
-const CATS = [
-  "Candid Moments",
-  "Cinematic Films",
-  "Drone & Aerials",
-  "Pre-Wedding",
-];
+const CATS = SITE.galleryCategories;
+type GalleryImage = Database["public"]["Tables"]["gallery_images"]["Row"];
 
 function Admin() {
   const { user } = Route.useRouteContext();
@@ -62,7 +68,8 @@ function Admin() {
       <header className="border-b border-border">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
           <Link to="/" className="font-semibold tracking-[0.25em]">
-            SR STUDIO <span className="text-primary">ADMIN</span>
+            {SITE.name.toUpperCase()}{" "}
+            <span className="text-primary">ADMIN</span>
           </Link>
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <span className="hidden sm:inline">{user.email}</span>
@@ -84,13 +91,186 @@ function Admin() {
           </p>
         ) : (
           <>
+            <InquiryAlerts />
+            <MobileAdminTools />
             <Analytics />
             <GalleryManager />
             <Inquiries />
+            <AccountSettings />
           </>
         )}
       </main>
     </div>
+  );
+}
+
+function MobileAdminTools() {
+  const [permission, setPermission] = useState<
+    NotificationPermission | "unsupported"
+  >(
+    typeof Notification === "undefined"
+      ? "unsupported"
+      : Notification.permission,
+  );
+
+  const enableNotifications = async () => {
+    if (typeof Notification === "undefined") {
+      toast.error("Notifications are not supported by this browser");
+      return;
+    }
+    const next = await Notification.requestPermission();
+    setPermission(next);
+    if (next === "granted") toast.success("Inquiry notifications enabled");
+    else toast.error("Notification permission was not granted");
+  };
+
+  return (
+    <section className="rounded-3xl border border-border bg-card p-6 shadow-lg shadow-black/10">
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="eyebrow">Studio app</p>
+          <h2 className="mt-2 flex items-center gap-2 text-xl font-light">
+            <Smartphone className="h-5 w-5 text-primary" /> Manage SR Studio
+            from Android
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+            Install this admin panel as an app to upload, edit, delete, and
+            manage gallery work from your phone.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <AppInstallPrompt />
+          <button
+            type="button"
+            onClick={enableNotifications}
+            disabled={permission === "granted" || permission === "unsupported"}
+            className="inline-flex items-center gap-2 rounded-full border border-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-primary transition-colors hover:bg-primary hover:text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {permission === "granted" ? (
+              <Check className="h-4 w-4" />
+            ) : (
+              <Bell className="h-4 w-4" />
+            )}
+            {permission === "granted"
+              ? "Alerts enabled"
+              : "Enable inquiry alerts"}
+          </button>
+        </div>
+      </div>
+      <p className="mt-4 text-xs text-muted-foreground">
+        Alerts appear while this installed app or admin page is open. Apply
+        migration <code>0002_enable_inquiry_realtime.sql</code> in Supabase to
+        activate real-time inquiry events.
+      </p>
+    </section>
+  );
+}
+
+function InquiryAlerts() {
+  const qc = useQueryClient();
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("admin-inquiry-alerts")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "inquiries" },
+        (payload) => {
+          const inquiry = payload.new as { name?: string; email?: string };
+          const title = "New wedding inquiry";
+          const body = inquiry.name
+            ? `${inquiry.name}${inquiry.email ? ` · ${inquiry.email}` : ""}`
+            : "Open the admin panel to review it.";
+          qc.invalidateQueries({ queryKey: ["inquiries"] });
+          qc.invalidateQueries({ queryKey: ["analytics"] });
+          toast.success(title, {
+            description: body,
+            icon: <BellRing className="h-4 w-4" />,
+          });
+          if (
+            typeof Notification !== "undefined" &&
+            Notification.permission === "granted"
+          ) {
+            new Notification(title, { body, icon: "/sr-studio-mark.svg" });
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [qc]);
+
+  return null;
+}
+
+function AccountSettings() {
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const updatePassword = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (password.length < 8) {
+      toast.error("Use at least 8 characters for your password");
+      return;
+    }
+    if (password !== confirm) {
+      toast.error("Passwords do not match");
+      return;
+    }
+    setBusy(true);
+    const { error } = await supabase.auth.updateUser({ password });
+    setBusy(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setPassword("");
+    setConfirm("");
+    toast.success("Password updated");
+  };
+
+  return (
+    <section className="rounded-3xl border border-border bg-card p-6 shadow-lg shadow-black/10">
+      <div className="flex items-center gap-3">
+        <LockKeyhole className="h-5 w-5 text-primary" />
+        <div>
+          <p className="eyebrow">Account security</p>
+          <h2 className="mt-1 text-2xl font-light">Change password</h2>
+        </div>
+      </div>
+      <form
+        onSubmit={updatePassword}
+        className="mt-6 grid gap-4 md:grid-cols-[1fr_1fr_auto]"
+      >
+        <input
+          type="password"
+          value={password}
+          minLength={8}
+          autoComplete="new-password"
+          onChange={(event) => setPassword(event.target.value)}
+          placeholder="New password (8+ characters)"
+          className="w-full rounded-full border border-input bg-background px-5 py-3 text-sm outline-none transition-colors focus:border-primary"
+        />
+        <input
+          type="password"
+          value={confirm}
+          minLength={8}
+          autoComplete="new-password"
+          onChange={(event) => setConfirm(event.target.value)}
+          placeholder="Confirm new password"
+          className="w-full rounded-full border border-input bg-background px-5 py-3 text-sm outline-none transition-colors focus:border-primary"
+        />
+        <button
+          disabled={busy}
+          className="rounded-full bg-gold px-6 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-primary-foreground disabled:opacity-60"
+        >
+          {busy ? "Updating…" : "Update password"}
+        </button>
+      </form>
+    </section>
   );
 }
 
@@ -221,10 +401,27 @@ function Analytics() {
 function GalleryManager() {
   const qc = useQueryClient();
   const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [cat, setCat] = useState<string>(CATS[0]!);
   const [tall, setTall] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [selected, setSelected] = useState<GalleryImage | null>(null);
+  const [editing, setEditing] = useState<GalleryImage | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editCategory, setEditCategory] = useState<string>(CATS[0]!);
+  const [editTall, setEditTall] = useState(false);
+
+  useEffect(() => {
+    if (!file) {
+      setPreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
   const { data: images } = useQuery({
     queryKey: ["gallery-images"],
     queryFn: async () =>
@@ -253,19 +450,18 @@ function GalleryManager() {
         .from("gallery")
         .createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
       if (signed.error) throw signed.error;
-      const ins = await supabase
-        .from("gallery_images")
-        .insert({
-          title: title.trim().slice(0, 100),
-          category: cat,
-          image_url: signed.data.signedUrl,
-          storage_path: path,
-          tall,
-        });
+      const ins = await supabase.from("gallery_images").insert({
+        title: title.trim().slice(0, 100),
+        category: cat,
+        image_url: signed.data.signedUrl,
+        storage_path: path,
+        tall,
+      });
       if (ins.error) throw ins.error;
       toast.success("Photo added to gallery");
       setFile(null);
       setTitle("");
+      setTall(false);
       (e.target as HTMLFormElement).reset();
       qc.invalidateQueries({ queryKey: ["gallery-images"] });
     } catch (err) {
@@ -275,13 +471,67 @@ function GalleryManager() {
     }
   };
 
-  const remove = async (id: string, path: string | null) => {
-    if (path) await supabase.storage.from("gallery").remove([path]);
-    await supabase.from("gallery_images").delete().eq("id", id);
-    qc.invalidateQueries({ queryKey: ["gallery-images"] });
+  const remove = async (image: GalleryImage) => {
+    if (!window.confirm(`Delete “${image.title}”? This cannot be undone.`))
+      return;
+    setBusy(true);
+    try {
+      if (image.storage_path) {
+        const { error } = await supabase.storage
+          .from("gallery")
+          .remove([image.storage_path]);
+        if (error) throw error;
+      }
+      const { error } = await supabase
+        .from("gallery_images")
+        .delete()
+        .eq("id", image.id);
+      if (error) throw error;
+      if (selected?.id === image.id) setSelected(null);
+      if (editing?.id === image.id) setEditing(null);
+      toast.success("Photo deleted");
+      qc.invalidateQueries({ queryKey: ["gallery-images"] });
+    } catch (error) {
+      toast.error((error as Error).message);
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const input = "w-full rounded-full border border-input bg-background px-5 py-3 text-sm transition-colors focus:border-primary focus:outline-none";
+  const startEdit = (image: GalleryImage) => {
+    setSelected(image);
+    setEditing(image);
+    setEditTitle(image.title);
+    setEditCategory(image.category);
+    setEditTall(image.tall);
+  };
+
+  const saveEdit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!editing || !editTitle.trim()) return;
+    setBusy(true);
+    try {
+      const { error } = await supabase
+        .from("gallery_images")
+        .update({
+          title: editTitle.trim().slice(0, 100),
+          category: editCategory,
+          tall: editTall,
+        })
+        .eq("id", editing.id);
+      if (error) throw error;
+      toast.success("Photo details updated");
+      setEditing(null);
+      qc.invalidateQueries({ queryKey: ["gallery-images"] });
+    } catch (error) {
+      toast.error((error as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const input =
+    "w-full rounded-full border border-input bg-background px-5 py-3 text-sm transition-colors focus:border-primary focus:outline-none";
   return (
     <section>
       <h2 className="mb-6 text-2xl font-light">Gallery</h2>
@@ -325,26 +575,153 @@ function GalleryManager() {
           />{" "}
           Portrait (tall) layout
         </label>
+        {preview && (
+          <div className="relative overflow-hidden rounded-2xl border border-primary/50 bg-background md:col-span-5">
+            <img
+              src={preview}
+              alt="Selected upload preview"
+              className="h-52 w-full object-cover"
+            />
+            <p className="absolute bottom-0 inset-x-0 bg-overlay/80 px-4 py-2 text-xs text-foreground">
+              Preview: {file?.name}
+            </p>
+          </div>
+        )}
       </form>
+      {selected && (
+        <div className="mt-6 grid gap-5 rounded-3xl border border-primary/50 bg-card p-5 sm:grid-cols-[10rem_1fr]">
+          <img
+            src={selected.image_url}
+            alt={selected.title}
+            className="aspect-square h-full w-full rounded-2xl object-cover"
+          />
+          <div className="flex flex-col justify-between gap-4">
+            <div>
+              <p className="eyebrow">Selected photo</p>
+              <h3 className="mt-2 text-xl font-light">{selected.title}</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {selected.category} · {selected.tall ? "Portrait" : "Landscape"}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => startEdit(selected)}
+                className="inline-flex items-center gap-2 rounded-full border border-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-primary hover:bg-primary hover:text-primary-foreground"
+              >
+                <Pencil className="h-4 w-4" /> Edit
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => remove(selected)}
+                className="inline-flex items-center gap-2 rounded-full border border-destructive px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-destructive hover:bg-destructive hover:text-destructive-foreground disabled:opacity-60"
+              >
+                <Trash2 className="h-4 w-4" /> Delete
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelected(null)}
+                className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" /> Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {editing && (
+        <form
+          onSubmit={saveEdit}
+          className="mt-6 grid gap-4 rounded-3xl border border-primary/50 bg-card p-6 md:grid-cols-3"
+        >
+          <div className="md:col-span-3 flex items-center justify-between gap-4">
+            <div>
+              <p className="eyebrow">Edit gallery photo</p>
+              <h3 className="mt-1 text-xl font-light">{editing.title}</h3>
+            </div>
+            <button
+              type="button"
+              onClick={() => setEditing(null)}
+              aria-label="Close editor"
+              className="rounded-full border border-border p-2 text-muted-foreground hover:text-primary"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <input
+            value={editTitle}
+            maxLength={100}
+            onChange={(event) => setEditTitle(event.target.value)}
+            className={input}
+            aria-label="Photo title"
+          />
+          <select
+            value={editCategory}
+            onChange={(event) => setEditCategory(event.target.value)}
+            className={input}
+            aria-label="Photo category"
+          >
+            {CATS.map((category) => (
+              <option key={category}>{category}</option>
+            ))}
+          </select>
+          <div className="flex items-center justify-between gap-3">
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={editTall}
+                onChange={(event) => setEditTall(event.target.checked)}
+              />{" "}
+              Portrait layout
+            </label>
+            <button
+              disabled={busy}
+              className="rounded-full bg-gold px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-primary-foreground disabled:opacity-60"
+            >
+              {busy ? "Saving…" : "Save changes"}
+            </button>
+          </div>
+        </form>
+      )}
       <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
         {images?.map((img) => (
-          <div key={img.id} className="group relative overflow-hidden rounded-2xl border border-border bg-card shadow-lg shadow-black/10">
-            <img
-              src={img.image_url}
-              alt={img.title}
-              className="aspect-square w-full object-cover"
-            />
+          <div
+            key={img.id}
+            className={`group relative overflow-hidden rounded-2xl border bg-card shadow-lg shadow-black/10 ${selected?.id === img.id ? "border-primary" : "border-border"}`}
+          >
+            <button
+              type="button"
+              onClick={() => setSelected(img)}
+              aria-label={`Select ${img.title}`}
+              className="block w-full text-left"
+            >
+              <img
+                src={img.image_url}
+                alt={img.title}
+                className="aspect-square w-full object-cover"
+              />
+            </button>
             <div className="p-3">
               <p className="text-sm">{img.title}</p>
               <p className="text-xs text-muted-foreground">{img.category}</p>
             </div>
-            <button
-              onClick={() => remove(img.id, img.storage_path)}
-              aria-label="Delete photo"
-              className="absolute right-2 top-2 rounded-full bg-background/90 p-2 text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
+            <div className="absolute right-2 top-2 flex gap-2">
+              <button
+                onClick={() => startEdit(img)}
+                aria-label="Edit photo"
+                className="rounded-full bg-background/90 p-2 text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => remove(img)}
+                aria-label="Delete photo"
+                className="rounded-full bg-background/90 p-2 text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         ))}
         {images?.length === 0 && (

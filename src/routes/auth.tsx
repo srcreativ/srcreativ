@@ -3,19 +3,20 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Aperture, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { SITE } from "@/lib/site-config";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Admin Sign In | SR Studio" },
+      { title: `Admin Sign In | ${SITE.name}` },
       {
         name: "description",
-        content: "Sign in to manage the SR Studio gallery and analytics.",
+        content: `Sign in to manage the ${SITE.name} gallery and analytics.`,
       },
-      { property: "og:title", content: "Admin Sign In | SR Studio" },
+      { property: "og:title", content: `Admin Sign In | ${SITE.name}` },
       {
         property: "og:description",
-        content: "Sign in to manage the SR Studio gallery and analytics.",
+        content: `Sign in to manage the ${SITE.name} gallery and analytics.`,
       },
       { name: "robots", content: "noindex" },
     ],
@@ -61,7 +62,9 @@ function AuthPage() {
       <div className="w-full max-w-md rounded-3xl border border-border bg-card p-10 shadow-2xl">
         <Link to="/" className="mb-10 flex items-center justify-center gap-2">
           <Aperture className="h-6 w-6 text-primary" strokeWidth={1.5} />
-          <span className="font-semibold tracking-[0.25em]">SR STUDIO</span>
+          <span className="font-semibold tracking-[0.25em]">
+            {SITE.name.toUpperCase()}
+          </span>
         </Link>
         <button
           onClick={google}
@@ -121,7 +124,11 @@ function AuthPage() {
               aria-pressed={showPassword}
               className="absolute inset-y-0 right-4 flex items-center text-muted-foreground transition-colors hover:text-primary"
             >
-              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              {showPassword ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
             </button>
           </div>
           <button
