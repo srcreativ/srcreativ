@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
 import {
@@ -42,6 +42,11 @@ import { DroneShowcase } from "@/components/DroneShowcase";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import ArtistSection from "@/components/ui/artist-section";
 import { SITE } from "@/lib/site-config";
+import {
+  DEFAULT_SITE_SETTINGS,
+  siteSettingsFrom,
+  type SiteSettings,
+} from "@/lib/site-settings";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -171,14 +176,13 @@ const testimonials = [
   },
 ];
 
+const SiteSettingsContext = createContext<SiteSettings>(DEFAULT_SITE_SETTINGS);
+const useSiteSettings = () => useContext(SiteSettingsContext);
+
 const inquirySchema = z.object({
   name: z.string().trim().min(1, "Please enter your name").max(100),
   email: z.string().trim().email("Please enter a valid email").max(255),
-  phone: z
-    .string()
-    .trim()
-    .max(30, "Phone number is too long")
-    .optional(),
+  phone: z.string().trim().max(30, "Phone number is too long").optional(),
   date: z.string().min(1, "Please choose your wedding date"),
   location: z.string().trim().min(1, "Please enter a location").max(150),
   services: z.array(z.string()).min(1, "Select at least one service"),
@@ -186,6 +190,19 @@ const inquirySchema = z.object({
 });
 
 function Index() {
+  const { data: savedSettings } = useQuery({
+    queryKey: ["public-site-settings"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("site_settings")
+        .select("data")
+        .eq("id", "default")
+        .maybeSingle();
+      return data?.data;
+    },
+    retry: false,
+  });
+  const settings = siteSettingsFrom(savedSettings);
   useEffect(() => {
     if (sessionStorage.getItem("sr-viewed")) return;
     sessionStorage.setItem("sr-viewed", "1");
@@ -199,25 +216,28 @@ function Index() {
       .then(() => {});
   }, []);
   return (
-    <div className="bg-background text-foreground">
-      <Header />
-      <main>
-        <Hero />
-        <Portfolio />
-        <DroneShowcase />
-        <AdSlot className="py-10" />
-        <ArtistProfile />
-        <Services />
-        <About />
-        <Testimonials />
-        <Inquiry />
-      </main>
-      <Footer />
-    </div>
+    <SiteSettingsContext.Provider value={settings}>
+      <div className="bg-background text-foreground">
+        <Header />
+        <main>
+          <Hero />
+          <Portfolio />
+          <DroneShowcase />
+          <AdSlot className="py-10" />
+          <ArtistProfile />
+          <Services />
+          <About />
+          <Testimonials />
+          <Inquiry />
+        </main>
+        <Footer />
+      </div>
+    </SiteSettingsContext.Provider>
   );
 }
 
 function Header() {
+  const settings = useSiteSettings();
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   useEffect(() => {
@@ -235,7 +255,7 @@ function Header() {
         <a href="#top" className="flex items-center gap-2">
           <Aperture className="h-6 w-6 text-primary" strokeWidth={1.5} />
           <span className="text-lg font-semibold tracking-[0.25em]">
-            {SITE.name.toUpperCase()}
+            {settings.brand.name.toUpperCase()}
           </span>
         </a>
         <nav className="hidden items-center gap-10 md:flex">
@@ -289,6 +309,7 @@ function Header() {
 }
 
 function Hero() {
+  const { hero } = useSiteSettings();
   return (
     <section
       id="top"
@@ -312,15 +333,14 @@ function Hero() {
 
       {/* Hero Content */}
       <div className="relative mx-auto w-full px-6 pb-16 pt-36 lg:px-12 lg:pb-20">
-        <p className="eyebrow mb-6">Wedding Photography · Films · Aerials</p>
+        <p className="eyebrow mb-6">{hero.eyebrow}</p>
 
         <h1 className="max-w-4xl text-4xl font-light leading-[1.05] tracking-tight sm:text-6xl lg:text-7xl">
-          Capturing Your Forever,{" "}
-          <span className="font-serif italic text-gold">Frame by Frame</span>
+          {hero.title}{" "}
+          <span className="font-serif italic text-gold">{hero.highlight}</span>
         </h1>
         <p className="mt-6 max-w-xl font-serif text-xl italic text-foreground/80 md:text-2xl">
-          Timeless wedding cinematography and breathtaking drone videography for
-          couples who want their story told like cinema.
+          {hero.subtitle}
         </p>
 
         {/* Action Buttons */}
@@ -329,7 +349,7 @@ function Hero() {
             href="#portfolio"
             className="group inline-flex items-center gap-3 rounded-full border border-primary bg-transparent px-7 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
           >
-            View Portfolio{" "}
+            {hero.primaryCta}{" "}
             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
           </a>
 
@@ -337,10 +357,9 @@ function Hero() {
             href="#inquire"
             className="inline-flex items-center rounded-full border border-primary px-7 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-primary backdrop-blur-sm transition-colors hover:bg-primary hover:text-primary-foreground"
           >
-            Inquire Now
+            {hero.secondaryCta}
           </a>
         </div>
-
       </div>
     </section>
   );
@@ -438,6 +457,7 @@ function Portfolio() {
 }
 
 function Services() {
+  const settings = useSiteSettings();
   return (
     <section
       id="services"
@@ -450,28 +470,31 @@ function Services() {
           italic="day"
         />
         <div className="grid gap-6 md:grid-cols-3">
-          {services.map((s) => (
-            <article
-              key={s.title}
-              className="group border border-border bg-background p-10 transition-all duration-500 hover:-translate-y-1 hover:border-primary/50 hover:shadow-gold"
-            >
-              <s.icon className="h-9 w-9 text-primary" strokeWidth={1.2} />
-              <h3 className="mt-8 text-xl font-medium">{s.title}</h3>
-              <p className="mt-3 font-serif text-lg leading-relaxed text-muted-foreground">
-                {s.desc}
-              </p>
-              <ul className="mt-8 space-y-3 border-t border-border pt-6">
-                {s.points.map((p) => (
-                  <li
-                    key={p}
-                    className="flex items-center gap-3 text-sm text-foreground/85"
-                  >
-                    <Sparkles className="h-3.5 w-3.5 text-primary" /> {p}
-                  </li>
-                ))}
-              </ul>
-            </article>
-          ))}
+          {settings.services.map((s, index) => {
+            const Icon = [Camera, Film, Plane][index] ?? Camera;
+            return (
+              <article
+                key={s.title}
+                className="group border border-border bg-background p-10 transition-all duration-500 hover:-translate-y-1 hover:border-primary/50 hover:shadow-gold"
+              >
+                <Icon className="h-9 w-9 text-primary" strokeWidth={1.2} />
+                <h3 className="mt-8 text-xl font-medium">{s.title}</h3>
+                <p className="mt-3 font-serif text-lg leading-relaxed text-muted-foreground">
+                  {s.description}
+                </p>
+                <ul className="mt-8 space-y-3 border-t border-border pt-6">
+                  {s.points.map((p) => (
+                    <li
+                      key={p}
+                      className="flex items-center gap-3 text-sm text-foreground/85"
+                    >
+                      <Sparkles className="h-3.5 w-3.5 text-primary" /> {p}
+                    </li>
+                  ))}
+                </ul>
+              </article>
+            );
+          })}
         </div>
       </div>
     </section>
@@ -483,6 +506,7 @@ function About() {
 }
 
 function ArtistProfile() {
+  const { artist: settings } = useSiteSettings();
   return (
     <section
       id="artist-profile"
@@ -500,29 +524,34 @@ function ArtistProfile() {
         />
       </div>
       <div>
-        <div className="mb-7 flex items-end gap-5" aria-label="Over 400 weddings filmed">
+        <div
+          className="mb-7 flex items-end gap-5"
+          aria-label="Over 400 weddings filmed"
+        >
           <div className="mb-2 h-px flex-1 bg-primary/70" />
           <div className="shrink-0 text-right">
-            <p className="text-3xl font-light leading-none text-gold">400+</p>
-            <p className="eyebrow mt-1 text-[0.55rem]">Weddings filmed</p>
+            <p className="text-3xl font-light leading-none text-gold">
+              {settings.metric}
+            </p>
+            <p className="eyebrow mt-1 text-[0.55rem]">
+              {settings.metricLabel}
+            </p>
           </div>
         </div>
-        <p className="eyebrow mb-4">The Artist</p>
-        <h2 id="artist-profile-title" className="text-3xl font-light tracking-tight md:text-5xl">
-          Every love story{" "}
-          <span className="font-serif italic text-gold">deserves cinema</span>
+        <p className="eyebrow mb-4">{settings.label}</p>
+        <h2
+          id="artist-profile-title"
+          className="text-3xl font-light tracking-tight md:text-5xl"
+        >
+          {settings.title}{" "}
+          <span className="font-serif italic text-gold">
+            {settings.highlight}
+          </span>
         </h2>
         <div className="mt-8 space-y-5 font-serif text-xl leading-relaxed text-muted-foreground">
-          <p>
-            SR Studio began with a single camera and a belief: the quiet glances
-            and unplanned laughter matter as much as the grand moments.
-          </p>
-          <p>
-            Today our team blends documentary storytelling with cinema-grade
-            cameras, prime lenses and licensed drones, while our approach remains
-            deeply personal. We get to know every couple before the day, so we
-            can capture who you truly are.
-          </p>
+          {settings.paragraphs.map((paragraph) => (
+            <p key={paragraph}>{paragraph}</p>
+          ))}
         </div>
         <div className="mt-10 grid grid-cols-3 gap-6 border-t border-border pt-8">
           {[
@@ -542,12 +571,13 @@ function ArtistProfile() {
 }
 
 function Testimonials() {
+  const settings = useSiteSettings();
   return (
     <section className="section-mask bg-card py-16 md:py-20">
       <div className="mx-auto max-w-7xl px-6">
         <SectionHead eyebrow="Kind Words" title="Loved by" italic="couples" />
         <div className="grid gap-6 md:grid-cols-3">
-          {testimonials.map((t) => (
+          {settings.testimonials.map((t) => (
             <blockquote
               key={t.name}
               className="flex flex-col border border-border bg-background p-10"
@@ -579,6 +609,7 @@ const field =
   "w-full rounded-xl border border-input bg-transparent px-4 py-3 text-foreground outline-none placeholder:text-muted-foreground/60 transition-colors focus:border-primary";
 
 function Inquiry() {
+  const { inquiry, brand, footer } = useSiteSettings();
   const [selected, setSelected] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const toggle = (s: string) =>
@@ -631,70 +662,147 @@ function Inquiry() {
     >
       <div className="grid items-start gap-12 lg:grid-cols-[0.82fr_1.18fr] lg:gap-20">
         <div className="lg:pt-6">
-          <p className="eyebrow">Inquire</p>
+          <p className="eyebrow">{inquiry.eyebrow}</p>
           <h2 className="mt-5 text-4xl font-light tracking-tight sm:text-5xl lg:text-6xl">
-            Let's plan your <span className="font-serif italic text-gold">story</span>
+            {inquiry.title}{" "}
+            <span className="font-serif italic text-gold">
+              {inquiry.highlight}
+            </span>
           </h2>
           <p className="mt-6 max-w-md font-serif text-xl leading-relaxed text-muted-foreground">
-            Share a few details about your wedding and we will craft a tailored
-            proposal, with availability for your date.
+            {inquiry.description}
           </p>
           <div className="mt-12 space-y-6 text-sm sm:text-base">
-            <a href={`mailto:${SITE.email}`} className="flex items-center gap-4 transition-colors hover:text-primary">
-              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-secondary text-primary"><Mail className="h-5 w-5" /></span>
-              {SITE.email}
+            <a
+              href={`mailto:${brand.email}`}
+              className="flex items-center gap-4 transition-colors hover:text-primary"
+            >
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-secondary text-primary">
+                <Mail className="h-5 w-5" />
+              </span>
+              {brand.email}
             </a>
-            <a href={`tel:${SITE.phone}`} className="flex items-center gap-4 transition-colors hover:text-primary">
-              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-secondary text-primary"><Phone className="h-5 w-5" /></span>
-              {SITE.phone}
+            <a
+              href={`tel:${brand.phone}`}
+              className="flex items-center gap-4 transition-colors hover:text-primary"
+            >
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-secondary text-primary">
+                <Phone className="h-5 w-5" />
+              </span>
+              {brand.phone}
             </a>
             <p className="flex items-center gap-4">
-              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-secondary text-primary"><MapPin className="h-5 w-5" /></span>
-              Available worldwide for destination weddings
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-secondary text-primary">
+                <MapPin className="h-5 w-5" />
+              </span>
+              {footer.availability}
             </p>
           </div>
         </div>
 
-        <form onSubmit={submit} noValidate className="grid gap-6 rounded-3xl border border-border bg-card/50 p-6 shadow-2xl sm:p-10 md:grid-cols-2">
+        <form
+          onSubmit={submit}
+          noValidate
+          className="grid gap-6 rounded-3xl border border-border bg-card/50 p-6 shadow-2xl sm:p-10 md:grid-cols-2"
+        >
           {[
             { n: "name", l: "Your names", t: "text", p: "Amara & Daniel" },
             { n: "date", l: "Wedding date", t: "date", p: "" },
-            { n: "email", l: "Email address", t: "email", p: "you@example.com" },
+            {
+              n: "email",
+              l: "Email address",
+              t: "email",
+              p: "you@example.com",
+            },
             { n: "phone", l: "Phone number", t: "tel", p: "+91 8114350249" },
           ].map((f) => (
             <label key={f.n} className="block">
-              <span className="mb-2 block text-sm text-foreground">{f.l}{f.n === "name" || f.n === "email" ? <span className="text-primary"> *</span> : null}</span>
-              <input name={f.n} type={f.t} placeholder={f.p} maxLength={f.n === "phone" ? 30 : 150} className={`${field} [color-scheme:dark]`} />
-              {errors[f.n] && <span className="mt-1 block text-xs text-destructive">{errors[f.n]}</span>}
+              <span className="mb-2 block text-sm text-foreground">
+                {f.l}
+                {f.n === "name" || f.n === "email" ? (
+                  <span className="text-primary"> *</span>
+                ) : null}
+              </span>
+              <input
+                name={f.n}
+                type={f.t}
+                placeholder={f.p}
+                maxLength={f.n === "phone" ? 30 : 150}
+                className={`${field} [color-scheme:dark]`}
+              />
+              {errors[f.n] && (
+                <span className="mt-1 block text-xs text-destructive">
+                  {errors[f.n]}
+                </span>
+              )}
             </label>
           ))}
           <label className="block md:col-span-2">
-            <span className="mb-2 block text-sm text-foreground">Wedding location <span className="text-primary">*</span></span>
-            <input name="location" type="text" placeholder="Venue or city" maxLength={150} className={field} />
-            {errors.location && <span className="mt-1 block text-xs text-destructive">{errors.location}</span>}
+            <span className="mb-2 block text-sm text-foreground">
+              {inquiry.locationLabel} <span className="text-primary">*</span>
+            </span>
+            <input
+              name="location"
+              type="text"
+              placeholder="Venue or city"
+              maxLength={150}
+              className={field}
+            />
+            {errors.location && (
+              <span className="mt-1 block text-xs text-destructive">
+                {errors.location}
+              </span>
+            )}
           </label>
           <fieldset className="md:col-span-2">
-            <legend className="mb-3 text-sm text-foreground">Services needed <span className="text-primary">*</span></legend>
+            <legend className="mb-3 text-sm text-foreground">
+              Services needed <span className="text-primary">*</span>
+            </legend>
             <div className="grid gap-3 sm:grid-cols-3">
               {[
                 { s: "Photography", i: Camera },
                 { s: "Videography", i: Film },
                 { s: "Drone & Aerial", i: Plane },
               ].map(({ s, i: I }) => (
-                <button type="button" key={s} onClick={() => toggle(s)} aria-pressed={selected.includes(s)} className={`flex min-h-12 items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm transition-all ${selected.includes(s) ? "border-primary bg-primary/15 text-primary" : "border-border text-foreground hover:border-primary/70"}`}>
+                <button
+                  type="button"
+                  key={s}
+                  onClick={() => toggle(s)}
+                  aria-pressed={selected.includes(s)}
+                  className={`flex min-h-12 items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm transition-all ${selected.includes(s) ? "border-primary bg-primary/15 text-primary" : "border-border text-foreground hover:border-primary/70"}`}
+                >
                   <I className="h-4 w-4" /> {s}
                 </button>
               ))}
             </div>
-            {errors.services && <span className="mt-2 block text-xs text-destructive">{errors.services}</span>}
+            {errors.services && (
+              <span className="mt-2 block text-xs text-destructive">
+                {errors.services}
+              </span>
+            )}
           </fieldset>
           <label className="block md:col-span-2">
-            <span className="mb-2 block text-sm text-foreground">Tell us about your day</span>
-            <textarea name="message" rows={4} maxLength={1000} placeholder="Your vision, guest count, timeline, or anything you would love us to know." className={`${field} resize-none`} />
+            <span className="mb-2 block text-sm text-foreground">
+              Tell us about your day
+            </span>
+            <textarea
+              name="message"
+              rows={4}
+              maxLength={1000}
+              placeholder="Your vision, guest count, timeline, or anything you would love us to know."
+              className={`${field} resize-none`}
+            />
           </label>
           <div className="flex flex-col gap-4 pt-2 sm:flex-row sm:items-center sm:justify-between md:col-span-2">
-            <p className="text-sm text-muted-foreground">We reply to every inquiry within two business days.</p>
-            <button type="submit" className="rounded-full bg-gold px-10 py-4 text-sm font-medium text-primary-foreground shadow-gold transition-transform hover:-translate-y-0.5">Send Inquiry</button>
+            <p className="text-sm text-muted-foreground">
+              We reply to every inquiry within two business days.
+            </p>
+            <button
+              type="submit"
+              className="rounded-full bg-gold px-10 py-4 text-sm font-medium text-primary-foreground shadow-gold transition-transform hover:-translate-y-0.5"
+            >
+              {inquiry.submitLabel}
+            </button>
           </div>
         </form>
       </div>
@@ -703,11 +811,13 @@ function Inquiry() {
 }
 
 function Footer() {
+  const { footer, brand } = useSiteSettings();
   return (
     <footer className="section-mask bg-card">
       <div className="mx-auto max-w-7xl px-6 py-20 text-center">
         <p className="font-serif text-4xl italic md:text-6xl">
-          Let's Create <span className="text-gold">Magic</span> Together
+          {footer.headline}{" "}
+          <span className="text-gold">{footer.highlight}</span> Together
         </p>
         <div className="mt-10 flex justify-center gap-4">
           {[
@@ -727,30 +837,53 @@ function Footer() {
         </div>
         <div className="mt-10 flex flex-col items-center justify-center gap-4 text-sm text-muted-foreground md:flex-row md:gap-10">
           <span className="flex items-center gap-2">
-            <Mail className="h-4 w-4 text-primary" /> {SITE.email}
+            <Mail className="h-4 w-4 text-primary" /> {brand.email}
           </span>
           <span className="flex items-center gap-2">
-            <Phone className="h-4 w-4 text-primary" /> {SITE.phone}
+            <Phone className="h-4 w-4 text-primary" /> {brand.phone}
           </span>
           <span className="flex items-center gap-2">
-            <MapPin className="h-4 w-4 text-primary" /> {SITE.location} · Available
-            worldwide
+            <MapPin className="h-4 w-4 text-primary" /> {brand.location} ·
+            Available worldwide
           </span>
         </div>
         <p className="mt-12 text-xs tracking-widest text-muted-foreground/70">
-          © {new Date().getFullYear()} {SITE.name.toUpperCase()}. ALL RIGHTS RESERVED. ·{" "}
+          © {new Date().getFullYear()} {footer.copyrightName.toUpperCase()}. ALL
+          RIGHTS RESERVED. ·{" "}
           <a href="/admin" className="hover:text-primary">
             ADMIN
           </a>
         </p>
-        <nav aria-label="Developer contact" className="mt-6 inline-flex items-center gap-3 rounded-full border border-primary px-5 py-2.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-primary transition-colors hover:bg-primary hover:text-primary-foreground">
+        <nav
+          aria-label="Developer contact"
+          className="mt-6 inline-flex items-center gap-3 rounded-full border border-primary px-5 py-2.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
+        >
           <span>Developed by Lokanath Pradhan</span>
           {[
-            { href: "https://www.linkedin.com/in/lokanath-pradhan-014ab2278/", label: "Lokanath Pradhan on LinkedIn", icon: Linkedin },
-            { href: "https://locamartin.github.io/", label: "Lokanath Pradhan website", icon: Globe },
-            { href: "https://github.com/LocaMartin", label: "Lokanath Pradhan on GitHub", icon: Github },
+            {
+              href: "https://www.linkedin.com/in/lokanath-pradhan-014ab2278/",
+              label: "Lokanath Pradhan on LinkedIn",
+              icon: Linkedin,
+            },
+            {
+              href: "https://locamartin.github.io/",
+              label: "Lokanath Pradhan website",
+              icon: Globe,
+            },
+            {
+              href: "https://github.com/LocaMartin",
+              label: "Lokanath Pradhan on GitHub",
+              icon: Github,
+            },
           ].map(({ href, label, icon: Icon }) => (
-            <a key={label} href={href} target="_blank" rel="noreferrer" aria-label={label} className="transition-colors hover:opacity-75">
+            <a
+              key={label}
+              href={href}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={label}
+              className="transition-colors hover:opacity-75"
+            >
               <Icon className="h-4 w-4" />
             </a>
           ))}

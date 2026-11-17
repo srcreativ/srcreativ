@@ -22,6 +22,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { AppInstallPrompt } from "@/components/AppInstallPrompt";
 import { SITE } from "@/lib/site-config";
+import { DEFAULT_SITE_SETTINGS, siteSettingsFrom } from "@/lib/site-settings";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
@@ -114,6 +115,7 @@ function Admin() {
           <>
             <InquiryAlerts />
             <MobileAdminTools />
+            <SiteEditor />
             <Analytics />
             <GalleryManager />
             <Inquiries />
@@ -224,6 +226,164 @@ function InquiryAlerts() {
   }, [qc]);
 
   return null;
+}
+
+function SiteEditor() {
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ["site-settings"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("site_settings")
+        .select("data")
+        .eq("id", "default")
+        .maybeSingle();
+      if (error) throw error;
+      return data?.data;
+    },
+    retry: false,
+  });
+  const [draft, setDraft] = useState(() =>
+    JSON.stringify(DEFAULT_SITE_SETTINGS, null, 2),
+  );
+  const [lastLoaded, setLastLoaded] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (isLoading) return;
+    const next = JSON.stringify(siteSettingsFrom(data), null, 2);
+    if (next !== lastLoaded) {
+      setDraft(next);
+      setLastLoaded(next);
+    }
+  }, [data, isLoading, lastLoaded]);
+
+  let preview = DEFAULT_SITE_SETTINGS;
+  let parseError = "";
+  try {
+    preview = siteSettingsFrom(JSON.parse(draft));
+  } catch {
+    parseError =
+      "The blueprint must be valid JSON before it can be previewed or published.";
+  }
+
+  const save = async () => {
+    if (parseError) {
+      toast.error(parseError);
+      return;
+    }
+    setSaving(true);
+    const { error } = await supabase
+      .from("site_settings")
+      .upsert(
+        {
+          id: "default",
+          data: JSON.parse(draft),
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "id" },
+      );
+    setSaving(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setLastLoaded(draft);
+    qc.invalidateQueries({ queryKey: ["site-settings"] });
+    qc.invalidateQueries({ queryKey: ["public-site-settings"] });
+    toast.success("Website changes published");
+  };
+
+  return (
+    <section className="rounded-3xl border border-primary/40 bg-card p-6 shadow-lg shadow-black/10">
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+        <div>
+          <p className="eyebrow">Reusable website editor</p>
+          <h2 className="mt-1 text-2xl font-light">Client site blueprint</h2>
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+            Edit all client-facing copy, business details, services,
+            testimonials, artist profile, calls to action, and social links in
+            one profile.
+          </p>
+        </div>
+        <a
+          href="/"
+          target="_blank"
+          rel="noreferrer"
+          className="rounded-full border border-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-primary hover:bg-primary hover:text-primary-foreground"
+        >
+          Open live site
+        </a>
+      </div>
+      <div className="mt-6 grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+        <div>
+          <label className="mb-2 block text-sm">Website blueprint (JSON)</label>
+          <textarea
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            spellCheck={false}
+            className="h-[34rem] w-full rounded-2xl border border-input bg-background p-4 font-mono text-xs leading-5 outline-none focus:border-primary"
+            aria-label="Website blueprint JSON"
+          />
+          {parseError && (
+            <p className="mt-2 text-sm text-destructive">{parseError}</p>
+          )}
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={save}
+              disabled={saving || Boolean(parseError)}
+              className="rounded-full bg-gold px-6 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-primary-foreground disabled:opacity-60"
+            >
+              {saving ? "Publishing…" : "Publish website changes"}
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                setDraft(JSON.stringify(DEFAULT_SITE_SETTINGS, null, 2))
+              }
+              className="rounded-full border border-border px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground hover:text-primary"
+            >
+              Restore template defaults
+            </button>
+          </div>
+        </div>
+        <div className="rounded-2xl border border-border bg-background p-5">
+          <p className="eyebrow">Live draft preview</p>
+          <div className="mt-4 overflow-hidden rounded-xl border border-primary/40 bg-card">
+            <div className="flex items-center justify-between border-b border-border px-4 py-3 text-xs">
+              <span className="tracking-[0.2em]">
+                {preview.brand.name.toUpperCase()}
+              </span>
+              <span className="text-primary">MENU</span>
+            </div>
+            <div className="bg-gradient-to-br from-card via-background to-secondary p-6">
+              <p className="eyebrow">{preview.hero.eyebrow}</p>
+              <h3 className="mt-4 text-3xl font-light leading-tight">
+                {preview.hero.title}{" "}
+                <i className="font-serif text-gold">{preview.hero.highlight}</i>
+              </h3>
+              <p className="mt-4 text-sm text-muted-foreground">
+                {preview.hero.subtitle}
+              </p>
+              <button className="mt-5 rounded-full border border-primary px-4 py-2 text-xs text-primary">
+                {preview.hero.primaryCta}
+              </button>
+            </div>
+            <div className="border-t border-border p-4 text-xs text-muted-foreground">
+              {preview.brand.email} · {preview.brand.phone}
+              <br />
+              {preview.brand.location}
+            </div>
+          </div>
+          <p className="mt-4 text-xs text-muted-foreground">
+            Preview updates as you type. Publishing updates the public website
+            without a redeploy.
+          </p>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 function AccountSettings() {
