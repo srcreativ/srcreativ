@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "srcreativ",
+  "main": ".output/server/index.mjs",
+  "compatibility_date": "2026-11-19",
+  "compatibility_flags": ["nodejs_compat"],
+  "no_bundle": true,
+  "assets": { "binding": "ASSETS", "directory": ".output/public" },
+  "rules": [{ "type": "ESModule", "globs": ["**/*.mjs", "**/*.js"] }],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "srcreativ-data",
+      "database_id": "cbd5731a-187e-4547-9beb-f6d79b9e65fe",
+    },
+  ],
+  "observability": { "enabled": true, "traces": { "enabled": true } },
+}
