@@ -1,7 +1,11 @@
 .drone-showcase {
   overflow: hidden;
   background:
-    radial-gradient(ellipse at 68% 42%, oklch(0.28 0.012 245 / 65%), transparent 46%),
+    radial-gradient(
+      ellipse at 68% 42%,
+      oklch(0.28 0.012 245 / 65%),
+      transparent 46%
+    ),
     linear-gradient(135deg, oklch(0.145 0.006 245), oklch(0.11 0.008 245));
 }
 
@@ -42,15 +46,15 @@
 
 .drone-showcase__visuals {
   display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr);
+  grid-template-columns: minmax(10rem, 0.78fr) minmax(11rem, 0.62fr);
   align-items: center;
+  overflow: hidden;
   min-height: 23rem;
 }
 
 .drone-controller {
   position: relative;
-  width: 100%;
-  max-width: 28rem;
+  width: min(100%, 19rem);
   justify-self: center;
   aspect-ratio: 1;
 }
@@ -84,7 +88,11 @@
 
 .drone-aircraft {
   min-width: 0;
+  width: 180%;
+  height: 29rem;
+  margin-left: -101%;
   aspect-ratio: 1;
+  pointer-events: none;
 }
 
 @media (max-width: 760px) {
@@ -106,5 +114,17 @@
   .drone-showcase__visuals {
     min-height: 0;
     margin-top: 1rem;
+    grid-template-columns: 1fr 0.82fr;
+    overflow: visible;
+  }
+
+  .drone-aircraft {
+    width: 130%;
+    height: 17rem;
+    margin-left: -35%;
+  }
+
+  .drone-controller {
+    width: min(100%, 12rem);
   }
 }

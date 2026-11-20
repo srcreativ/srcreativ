@@ -27,6 +27,9 @@ export function DroneShowcase({
         </div>
 
         <div className="drone-showcase__visuals">
+          <div className="drone-aircraft">
+            <DronePage />
+          </div>
           <div className="drone-controller">
             <img
               src={controllerImage}
@@ -44,9 +47,6 @@ export function DroneShowcase({
                 disablePictureInPicture
               />
             </div>
-          </div>
-          <div className="drone-aircraft">
-            <DronePage />
           </div>
         </div>
       </div>

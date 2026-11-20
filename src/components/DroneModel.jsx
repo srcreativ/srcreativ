@@ -99,13 +99,12 @@ export default function DronePage() {
 
     let disposed = false;
     let animationId = 0;
-    let hovering = false;
+    let isVisible = false;
     let spinSpeed = 0;
 
     const geometries = [];
     const textures = [];
     const rotors = [];
-    const hitMeshes = [];
     const disposables = [];
 
     const scene = new THREE.Scene();
@@ -201,11 +200,7 @@ export default function DronePage() {
     disposables.push(shadowMesh.geometry, shadowMaterial);
 
     const loader = new STLLoader();
-    const raycaster = new THREE.Raycaster();
-    const pointer = new THREE.Vector2();
-
     let modelHalfSize = 1;
-    let modelLoaded = false;
 
     // light effect sprites
     const frontLeftGlow = makeGlowSprite("rgba(80,255,140,1)", 0.55);
@@ -300,7 +295,6 @@ export default function DronePage() {
 
         const bodyMesh = new THREE.Mesh(bodyGeometry, bodyMaterial);
         modelContent.add(bodyMesh);
-        hitMeshes.push(bodyMesh);
 
         const rotorPivots = {};
 
@@ -326,8 +320,6 @@ export default function DronePage() {
             group: rotorGroup,
             direction: settings.direction,
           });
-
-          hitMeshes.push(bladeMesh);
         });
 
         const bounds = new THREE.Box3().setFromObject(modelContent);
@@ -390,7 +382,6 @@ export default function DronePage() {
         bottomGlow.scale.set(glowSize * 1.5, glowSize * 1.5, 1);
 
         modelHalfSize = (Math.max(size.x, size.z) * scale) / 2;
-        modelLoaded = true;
 
         fitCamera();
       } catch (error) {
@@ -402,32 +393,21 @@ export default function DronePage() {
       }
     }
 
-    function handlePointerMove(event) {
-      if (!modelLoaded) return;
-
-      const rect = renderer.domElement.getBoundingClientRect();
-
-      pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-      pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-
-      raycaster.setFromCamera(pointer, camera);
-
-      const intersections = raycaster.intersectObjects(hitMeshes, false);
-      hovering = intersections.length > 0;
-    }
-
-    function handlePointerLeave() {
-      hovering = false;
-    }
-
-    renderer.domElement.addEventListener("pointermove", handlePointerMove);
-    renderer.domElement.addEventListener("pointerleave", handlePointerLeave);
-
     const observer = new ResizeObserver(() => {
       fitCamera();
     });
 
     observer.observe(container);
+
+    const visibilityObserver = new IntersectionObserver(
+      ([entry]) => {
+        isVisible = entry.isIntersecting && entry.intersectionRatio >= 0.25;
+        container.dataset.active = isVisible ? "true" : "false";
+      },
+      { threshold: [0, 0.25, 0.75] },
+    );
+
+    visibilityObserver.observe(container);
 
     const clock = new THREE.Clock();
     let elapsed = 0;
@@ -442,12 +422,12 @@ export default function DronePage() {
       // returned ~0 and effectively stopped the rotor animation.
       const delta = Math.min(clock.getDelta(), 0.05);
       elapsed += delta;
-      const targetSpeed = hovering ? 28 : 0;
+      const targetSpeed = isVisible ? 28 : 0;
 
       spinSpeed = THREE.MathUtils.damp(
         spinSpeed,
         targetSpeed,
-        hovering ? 3.4 : 2.4,
+        isVisible ? 3.4 : 2.4,
         delta,
       );
 
@@ -482,12 +462,7 @@ export default function DronePage() {
 
       cancelAnimationFrame(animationId);
       observer.disconnect();
-
-      renderer.domElement.removeEventListener("pointermove", handlePointerMove);
-      renderer.domElement.removeEventListener(
-        "pointerleave",
-        handlePointerLeave,
-      );
+      visibilityObserver.disconnect();
 
       geometries.forEach((g) => g.dispose());
       disposables.forEach((item) => item.dispose());

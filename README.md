@@ -1,18 +1,12 @@
-# Welcome to your Lovable project
+# SR Studio
 
-This project was built with [Lovable](https://lovable.dev).
-
-## Build with Lovable
-
-Open your project in the [Lovable editor](https://lovable.dev) and keep building.
-
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: connect the project to GitHub and every change made in Lovable is committed straight to your repository.
-- **Full ownership**: this code is yours. Push to your repository and your changes sync back into Lovable, ready for your next prompt.
+SR Studio is a cinematic wedding photography and film portfolio, with an
+editable admin panel, gallery management, VDP/hall-of-fame programme, and
+Cloudflare Workers deployment.
 
 ## Development
 
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+You need Node.js and npm.
 
 ```sh
 git clone <this-repository-url>
@@ -21,12 +15,33 @@ npm i
 npm run dev
 ```
 
+## Commands
+
+```sh
+npm run dev
+npm run build
+npm test
+```
+
 ## Built with
 
 - TanStack Start
 - TypeScript
 - React
 - Tailwind CSS
+- Supabase (authentication, database, storage)
+- Cloudflare Workers (production hosting)
+
+## Production repository files
+
+- [LICENSE](./LICENSE) — proprietary usage terms.
+- [SECURITY.md](./SECURITY.md) — private vulnerability reporting policy.
+- [CONTRIBUTING.md](./CONTRIBUTING.md) — approved contribution workflow.
+- `.github/` — Dependabot, bug-report form, and PR checklist.
+
+Never commit `.env`, `.dev.vars`, API keys, OAuth secrets, or service-role
+keys. See [HOSTING_GUIDE.md](./HOSTING_GUIDE.md) for deployment and environment
+configuration.
 
 ## Self-Hosting (Without Lovable)
 
