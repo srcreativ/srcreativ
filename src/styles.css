@@ -131,6 +131,12 @@
 /* Fade every major block into the page background instead of drawing hard rules
    between sections. The Artist section established this soft cinematic handoff. */
 @layer components {
+  /* The theme studio changes this custom property from its heading-size slider. */
+  .site-theme h1,
+  .site-theme h2 {
+    zoom: var(--sr-heading-scale, 1);
+  }
+
   .section-mask {
     position: relative;
     isolation: isolate;

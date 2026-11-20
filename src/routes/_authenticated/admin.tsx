@@ -21,12 +21,21 @@ import {
   Plus,
   Save,
   ShieldAlert,
+  Palette,
+  GripVertical,
+  RotateCcw,
+  ImagePlus,
+  Video,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { AppInstallPrompt } from "@/components/AppInstallPrompt";
 import { SITE } from "@/lib/site-config";
-import { DEFAULT_SITE_SETTINGS, siteSettingsFrom } from "@/lib/site-settings";
+import {
+  DEFAULT_SITE_SETTINGS,
+  siteSettingsFrom,
+  type SiteSettings,
+} from "@/lib/site-settings";
 import {
   DEFAULT_VDP_HALL,
   DEFAULT_VDP_SETTINGS,
@@ -128,6 +137,7 @@ function Admin() {
             <InquiryAlerts />
             <MobileAdminTools />
             <SiteEditor />
+            <ThemeMediaStudio />
             <VdpManager />
             <Analytics />
             <GalleryManager />
@@ -393,6 +403,425 @@ function SiteEditor() {
           </p>
         </div>
       </div>
+    </section>
+  );
+}
+
+const MEDIA_SLOTS = [
+  ["titleIcon", "Title icon / favicon", "image"],
+  ["heroVideo", "Hero background video", "video"],
+  ["heroPoster", "Hero video poster", "image"],
+  ["artistPortrait", "The Artist portrait", "image"],
+  ["artistNote", "A Note from the Artist image", "image"],
+  ["controllerImage", "Drone controller", "image"],
+  ["droneVideo", "Drone controller screen video", "video"],
+  ["gallery.candid", "Gallery: Haldi Laughter", "image"],
+  ["gallery.drone", "Gallery: Lakeside Vows", "image"],
+  ["gallery.cinematic", "Gallery: The Bridal Walk", "image"],
+  ["gallery.prewedding", "Gallery: Above the Clouds", "image"],
+  ["gallery.candid2", "Gallery: Seven Promises", "image"],
+  ["gallery.hero", "Gallery: Palace of Gold", "image"],
+  ["gallery.ceremony1", "Gallery: Before the Vows", "image"],
+  ["gallery.ceremony2", "Gallery: Held Close", "image"],
+  ["gallery.ceremony3", "Gallery: Sacred Promises", "image"],
+  ["gallery.ceremony4", "Gallery: Together, Always", "image"],
+] as const;
+
+const SECTION_LABELS: Record<string, string> = {
+  hero: "Hero",
+  portfolio: "Featured work",
+  drone: "Drone showcase",
+  ad: "Featured message",
+  "artist-profile": "The Artist",
+  services: "What we offer",
+  about: "A note from the artist",
+  testimonials: "Kind words",
+  inquiry: "Inquiry",
+};
+
+function ThemeMediaStudio() {
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ["site-settings-theme-media"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("site_settings")
+        .select("data")
+        .eq("id", "default")
+        .maybeSingle();
+      if (error) throw error;
+      return data?.data;
+    },
+    retry: false,
+  });
+  const [draft, setDraft] = useState(() => siteSettingsFrom(null));
+  const [loaded, setLoaded] = useState<string | null>(null);
+  const [open, setOpen] = useState(true);
+  const [busySlot, setBusySlot] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [dragged, setDragged] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isLoading) return;
+    const next = siteSettingsFrom(data);
+    const snapshot = JSON.stringify(next);
+    if (snapshot !== loaded) {
+      setDraft(next);
+      setLoaded(snapshot);
+    }
+  }, [data, isLoading, loaded]);
+
+  const updateTheme = <K extends keyof SiteSettings["theme"]>(
+    key: K,
+    value: SiteSettings["theme"][K],
+  ) =>
+    setDraft((current) => ({
+      ...current,
+      theme: { ...current.theme, [key]: value },
+    }));
+  const slotValue = (slot: string) =>
+    slot.startsWith("gallery.")
+      ? draft.media.gallery[slot.slice(8)] || ""
+      : draft.media[slot as Exclude<keyof SiteSettings["media"], "gallery">];
+  const setSlot = (slot: string, value: string) =>
+    setDraft((current) =>
+      slot.startsWith("gallery.")
+        ? {
+            ...current,
+            media: {
+              ...current.media,
+              gallery: { ...current.media.gallery, [slot.slice(8)]: value },
+            },
+          }
+        : { ...current, media: { ...current.media, [slot]: value } },
+    );
+  const save = async () => {
+    setSaving(true);
+    const { error } = await supabase
+      .from("site_settings")
+      .upsert(
+        { id: "default", data: draft, updated_at: new Date().toISOString() },
+        { onConflict: "id" },
+      );
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    setLoaded(JSON.stringify(draft));
+    qc.invalidateQueries({ queryKey: ["site-settings"] });
+    qc.invalidateQueries({ queryKey: ["public-site-settings"] });
+    qc.invalidateQueries({ queryKey: ["site-settings-theme-media"] });
+    toast.success("Theme and landing-page media published");
+  };
+  const upload = async (slot: string, file: File) => {
+    const kind = MEDIA_SLOTS.find(([key]) => key === slot)?.[2];
+    if (kind === "image" && !file.type.startsWith("image/"))
+      return toast.error("Choose an image for this slot");
+    if (kind === "video" && !file.type.startsWith("video/"))
+      return toast.error("Choose a video for this slot");
+    if (file.size > 100 * 1024 * 1024)
+      return toast.error("Each asset must be 100 MB or smaller");
+    setBusySlot(slot);
+    try {
+      const extension =
+        file.name.split(".").pop()?.toLowerCase() ||
+        (kind === "video" ? "mp4" : "webp");
+      const path = `landing/${slot.replace(".", "-")}/${crypto.randomUUID()}.${extension}`;
+      const { error } = await supabase.storage
+        .from("site-media")
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (error) throw error;
+      const { data: url } = supabase.storage
+        .from("site-media")
+        .getPublicUrl(path);
+      setSlot(slot, url.publicUrl);
+      toast.success("Asset uploaded. Save & publish to make it live.");
+    } catch (error) {
+      toast.error((error as Error).message);
+    } finally {
+      setBusySlot(null);
+    }
+  };
+  const reorder = (target: string) => {
+    if (!dragged || dragged === target) return;
+    const order = [...draft.theme.sectionOrder];
+    const from = order.indexOf(dragged);
+    const to = order.indexOf(target);
+    if (from < 0 || to < 0) return;
+    order.splice(from, 1);
+    order.splice(to, 0, dragged);
+    updateTheme("sectionOrder", order);
+    setDragged(null);
+  };
+
+  return (
+    <section className="rounded-3xl border border-primary/40 bg-card p-6 shadow-lg shadow-black/10">
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+        <div>
+          <p className="eyebrow">No-code site studio</p>
+          <h2 className="mt-1 flex items-center gap-2 text-2xl font-light">
+            <Palette className="h-5 w-5 text-primary" /> Theme, layout & landing
+            media
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+            Choose your palette, move sections by drag and drop, adjust
+            dimensions with sliders, and replace every landing-page image,
+            video, and title mark.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          className="rounded-full border border-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-primary"
+        >
+          {open ? "Minimize editor" : "Maximize editor"}
+        </button>
+      </div>
+      {open && (
+        <div className="mt-7 grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+          <div className="space-y-6">
+            <details
+              open
+              className="rounded-2xl border border-border bg-background p-5"
+            >
+              <summary className="cursor-pointer text-lg font-light">
+                Theme controls
+              </summary>
+              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                {(
+                  [
+                    ["background", "Page background"],
+                    ["foreground", "Text color"],
+                    ["primary", "Gold accent"],
+                    ["card", "Card color"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <label key={key} className="text-sm">
+                    {label}
+                    <span className="mt-2 flex items-center gap-3 rounded-xl border border-input bg-card px-3 py-2">
+                      <input
+                        type="color"
+                        value={draft.theme[key]}
+                        onChange={(event) =>
+                          updateTheme(key, event.target.value)
+                        }
+                        className="h-8 w-10 cursor-pointer border-0 bg-transparent"
+                      />
+                      <input
+                        value={draft.theme[key]}
+                        onChange={(event) =>
+                          updateTheme(key, event.target.value)
+                        }
+                        className="min-w-0 flex-1 bg-transparent font-mono text-xs outline-none"
+                      />
+                    </span>
+                  </label>
+                ))}
+                <label className="text-sm">
+                  Corner roundness{" "}
+                  <span className="float-right text-primary">
+                    {draft.theme.radius}px
+                  </span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="32"
+                    value={draft.theme.radius}
+                    onChange={(event) =>
+                      updateTheme("radius", Number(event.target.value))
+                    }
+                    className="mt-3 w-full accent-[var(--primary)]"
+                  />
+                </label>
+                <label className="text-sm">
+                  Heading scale{" "}
+                  <span className="float-right text-primary">
+                    {draft.theme.headingScale.toFixed(2)}×
+                  </span>
+                  <input
+                    type="range"
+                    min="0.8"
+                    max="1.25"
+                    step="0.05"
+                    value={draft.theme.headingScale}
+                    onChange={(event) =>
+                      updateTheme("headingScale", Number(event.target.value))
+                    }
+                    className="mt-3 w-full accent-[var(--primary)]"
+                  />
+                </label>
+              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  setDraft((current) => ({
+                    ...current,
+                    theme: DEFAULT_SITE_SETTINGS.theme,
+                    media: current.media,
+                  }))
+                }
+                className="mt-5 inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-xs text-muted-foreground hover:text-primary"
+              >
+                <RotateCcw className="h-3.5 w-3.5" /> Reset theme defaults
+              </button>
+            </details>
+            <details
+              open
+              className="rounded-2xl border border-border bg-background p-5"
+            >
+              <summary className="cursor-pointer text-lg font-light">
+                Section order
+              </summary>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Drag a row to rearrange the public landing page.
+              </p>
+              <div className="mt-4 space-y-2">
+                {draft.theme.sectionOrder.map((section) => (
+                  <div
+                    key={section}
+                    draggable
+                    onDragStart={() => setDragged(section)}
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={() => reorder(section)}
+                    className="flex cursor-grab items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 text-sm active:cursor-grabbing"
+                  >
+                    <GripVertical className="h-4 w-4 text-primary" />
+                    {SECTION_LABELS[section] || section}
+                  </div>
+                ))}
+              </div>
+            </details>
+            <details
+              open
+              className="rounded-2xl border border-border bg-background p-5"
+            >
+              <summary className="cursor-pointer text-lg font-light">
+                Landing-page media
+              </summary>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Upload JPG, PNG, WebP, SVG, MP4, or WebM files. Video and image
+                uploads are capped at 100 MB.
+              </p>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                {MEDIA_SLOTS.map(([slot, label, kind]) => (
+                  <label
+                    key={slot}
+                    className="group rounded-xl border border-border bg-card p-3 text-sm transition hover:border-primary/50"
+                  >
+                    <span className="flex items-center gap-2 font-medium">
+                      {kind === "video" ? (
+                        <Video className="h-4 w-4 text-primary" />
+                      ) : (
+                        <ImagePlus className="h-4 w-4 text-primary" />
+                      )}
+                      {label}
+                    </span>
+                    <span className="mt-2 block truncate font-mono text-[10px] text-muted-foreground">
+                      {slotValue(slot) || "Built-in default"}
+                    </span>
+                    <input
+                      type="file"
+                      accept={
+                        kind === "video"
+                          ? "video/mp4,video/webm"
+                          : "image/jpeg,image/png,image/webp,image/svg+xml"
+                      }
+                      className="mt-3 block w-full text-xs"
+                      disabled={busySlot === slot}
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (file) upload(slot, file);
+                        event.currentTarget.value = "";
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setSlot(slot, "")}
+                      className="mt-2 text-xs text-muted-foreground hover:text-destructive"
+                    >
+                      Use built-in default
+                    </button>
+                  </label>
+                ))}
+              </div>
+            </details>
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                disabled={saving}
+                onClick={save}
+                className="rounded-full bg-gold px-6 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-primary-foreground disabled:opacity-60"
+              >
+                {saving ? "Publishing…" : "Save & publish"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setDraft(siteSettingsFrom(data))}
+                className="rounded-full border border-border px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground"
+              >
+                Reset unsaved changes
+              </button>
+            </div>
+          </div>
+          <aside className="rounded-2xl border border-border bg-background p-5 xl:sticky xl:top-6 xl:h-fit">
+            <p className="eyebrow">Live theme preview</p>
+            <div
+              style={{
+                background: draft.theme.background,
+                color: draft.theme.foreground,
+                borderRadius: draft.theme.radius,
+              }}
+              className="mt-4 overflow-hidden border border-white/10 shadow-2xl"
+            >
+              <div className="flex items-center justify-between border-b border-white/10 px-4 py-3 text-xs">
+                <span className="tracking-[0.2em]">
+                  {draft.brand.name.toUpperCase()}
+                </span>
+                <span style={{ color: draft.theme.primary }}>MENU</span>
+              </div>
+              <div className="min-h-72 bg-gradient-to-br from-black/30 to-transparent p-6">
+                <p
+                  className="text-xs uppercase tracking-[0.2em]"
+                  style={{ color: draft.theme.primary }}
+                >
+                  {draft.hero.eyebrow}
+                </p>
+                <h3
+                  className="mt-5 font-serif font-light leading-tight"
+                  style={{ fontSize: `${2.2 * draft.theme.headingScale}rem` }}
+                >
+                  {draft.hero.title}{" "}
+                  <i style={{ color: draft.theme.primary }}>
+                    {draft.hero.highlight}
+                  </i>
+                </h3>
+                <p className="mt-4 text-sm opacity-75">{draft.hero.subtitle}</p>
+                <span
+                  style={{
+                    borderColor: draft.theme.primary,
+                    color: draft.theme.primary,
+                  }}
+                  className="mt-6 inline-block rounded-full border px-4 py-2 text-xs"
+                >
+                  {draft.hero.primaryCta}
+                </span>
+              </div>
+              <div
+                style={{ background: draft.theme.card }}
+                className="p-4 text-xs opacity-80"
+              >
+                {draft.theme.sectionOrder
+                  .map((section) => SECTION_LABELS[section])
+                  .filter(Boolean)
+                  .join(" · ")}
+              </div>
+            </div>
+            <iframe
+              title="Published public website preview"
+              src="/"
+              className="mt-5 h-80 w-full rounded-xl border border-border bg-card"
+            />
+          </aside>
+        </div>
+      )}
     </section>
   );
 }

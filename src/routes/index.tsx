@@ -1,5 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { createContext, useContext, useEffect, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { z } from "zod";
 import { toast } from "sonner";
 import {
@@ -24,7 +31,7 @@ import {
   Globe,
   Linkedin,
 } from "lucide-react";
-import hero from "@/assets/hero.jpg";
+import heroImage from "@/assets/hero.jpg";
 import candid from "@/assets/candid.jpg";
 import candid2 from "@/assets/candid2.jpg";
 import drone from "@/assets/drone.jpg";
@@ -119,23 +126,18 @@ const categories = [
   "Pre-Wedding",
   "Gallery",
 ] as const;
-const gallery = [
-  { src: candid, cat: "Candid Moments", title: "Haldi Laughter", tall: true },
-  { src: drone, cat: "Drone & Aerials", title: "Lakeside Vows" },
-  { src: cinematic, cat: "Cinematic Films", title: "The Bridal Walk" },
-  {
-    src: prewedding,
-    cat: "Pre-Wedding",
-    title: "Above the Clouds",
-    tall: true,
-  },
-  { src: candid2, cat: "Candid Moments", title: "Seven Promises" },
-  { src: hero, cat: "Cinematic Films", title: "Palace of Gold" },
-  { src: ceremony1, cat: "Candid Moments", title: "Before the Vows" },
-  { src: ceremony2, cat: "Cinematic Films", title: "Held Close" },
-  { src: ceremony3, cat: "Candid Moments", title: "Sacred Promises" },
-  { src: ceremony4, cat: "Pre-Wedding", title: "Together, Always" },
-];
+const defaultGallery = [
+  ["candid", candid, "Candid Moments", "Haldi Laughter", true],
+  ["drone", drone, "Drone & Aerials", "Lakeside Vows", false],
+  ["cinematic", cinematic, "Cinematic Films", "The Bridal Walk", false],
+  ["prewedding", prewedding, "Pre-Wedding", "Above the Clouds", true],
+  ["candid2", candid2, "Candid Moments", "Seven Promises", false],
+  ["hero", heroImage, "Cinematic Films", "Palace of Gold", false],
+  ["ceremony1", ceremony1, "Candid Moments", "Before the Vows", false],
+  ["ceremony2", ceremony2, "Cinematic Films", "Held Close", false],
+  ["ceremony3", ceremony3, "Candid Moments", "Sacred Promises", false],
+  ["ceremony4", ceremony4, "Pre-Wedding", "Together, Always", false],
+] as const;
 
 const services = [
   {
@@ -204,6 +206,14 @@ function Index() {
   });
   const settings = siteSettingsFrom(savedSettings);
   useEffect(() => {
+    const icon = document.querySelector(
+      'link[rel="icon"]',
+    ) as HTMLLinkElement | null;
+    if (icon && settings.media.titleIcon) {
+      icon.href = settings.media.titleIcon;
+    }
+  }, [settings.media.titleIcon]);
+  useEffect(() => {
     if (sessionStorage.getItem("sr-viewed")) return;
     sessionStorage.setItem("sr-viewed", "1");
     supabase
@@ -217,18 +227,41 @@ function Index() {
   }, []);
   return (
     <SiteSettingsContext.Provider value={settings}>
-      <div className="bg-background text-foreground">
+      <div
+        className="site-theme bg-background text-foreground"
+        style={
+          {
+            "--background": settings.theme.background,
+            "--foreground": settings.theme.foreground,
+            "--primary": settings.theme.primary,
+            "--card": settings.theme.card,
+            "--radius": `${settings.theme.radius}px`,
+            "--sr-heading-scale": settings.theme.headingScale,
+          } as CSSProperties
+        }
+      >
         <Header />
         <main>
-          <Hero />
-          <Portfolio />
-          <DroneShowcase />
-          <AdSlot className="py-10" />
-          <ArtistProfile />
-          <Services />
-          <About />
-          <Testimonials />
-          <Inquiry />
+          {settings.theme.sectionOrder.map((section) => {
+            const sections: Record<string, ReactNode> = {
+              hero: <Hero key="hero" />,
+              portfolio: <Portfolio key="portfolio" />,
+              drone: (
+                <DroneShowcase
+                  key="drone"
+                  controllerImage={settings.media.controllerImage}
+                  droneVideo={settings.media.droneVideo}
+                />
+              ),
+              ad: <AdSlot key="ad" className="py-10" />,
+              "artist-profile": <ArtistProfile key="artist-profile" />,
+              services: <Services key="services" />,
+              about: <About key="about" />,
+              testimonials: <Testimonials key="testimonials" />,
+              inquiry: <Inquiry key="inquiry" />,
+            };
+            return sections[section] ?? null;
+          })}
         </main>
         <Footer />
       </div>
@@ -253,7 +286,15 @@ function Header() {
       <div className="mx-auto flex h-20 w-full items-center justify-between px-6 lg:px-12">
         <div id="google_translate_element" className="hidden" />
         <a href="#top" className="flex items-center gap-2">
-          <Aperture className="h-6 w-6 text-primary" strokeWidth={1.5} />
+          {settings.media.titleIcon ? (
+            <img
+              src={settings.media.titleIcon}
+              alt=""
+              className="h-6 w-6 object-contain"
+            />
+          ) : (
+            <Aperture className="h-6 w-6 text-primary" strokeWidth={1.5} />
+          )}
           <span className="text-lg font-semibold tracking-[0.25em]">
             {settings.brand.name.toUpperCase()}
           </span>
@@ -309,7 +350,7 @@ function Header() {
 }
 
 function Hero() {
-  const { hero } = useSiteSettings();
+  const { hero, media } = useSiteSettings();
   return (
     <section
       id="top"
@@ -317,8 +358,8 @@ function Hero() {
     >
       {/* Background Marriage Video Preview */}
       <video
-        src="/videos/indian-wedding.mp4"
-        poster={hero}
+        src={media.heroVideo}
+        poster={media.heroPoster || heroImage}
         autoPlay
         loop
         muted
@@ -386,6 +427,7 @@ function SectionHead({
 
 function Portfolio() {
   const [active, setActive] = useState<(typeof categories)[number]>("All");
+  const { media } = useSiteSettings();
   const { data: uploaded = [] } = useQuery({
     queryKey: ["public-gallery"],
     queryFn: async () =>
@@ -401,6 +443,12 @@ function Portfolio() {
     cat: u.category,
     title: u.title,
     tall: u.tall,
+  }));
+  const gallery = defaultGallery.map(([key, src, cat, title, tall]) => ({
+    src: media.gallery[key] || src,
+    cat,
+    title,
+    tall,
   }));
   const all = [...uploadedItems, ...gallery];
   const items =
@@ -502,11 +550,17 @@ function Services() {
 }
 
 function About() {
-  return <ArtistSection />;
+  const { media } = useSiteSettings();
+  return (
+    <ArtistSection
+      imageUrl={media.artistNote || undefined}
+      photographerImageUrl={media.artistPortrait || undefined}
+    />
+  );
 }
 
 function ArtistProfile() {
-  const { artist: settings } = useSiteSettings();
+  const { artist: settings, media } = useSiteSettings();
   return (
     <section
       id="artist-profile"
@@ -515,7 +569,7 @@ function ArtistProfile() {
     >
       <div className="relative">
         <img
-          src={artist}
+          src={media.artistPortrait || artist}
           alt="The lead photographer of SR Studio"
           loading="lazy"
           width={768}

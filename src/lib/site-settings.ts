@@ -43,6 +43,25 @@ export type SiteSettings = {
     youtube: string;
     facebook: string;
   };
+  theme: {
+    background: string;
+    foreground: string;
+    primary: string;
+    card: string;
+    radius: number;
+    headingScale: number;
+    sectionOrder: string[];
+  };
+  media: {
+    titleIcon: string;
+    heroVideo: string;
+    heroPoster: string;
+    artistPortrait: string;
+    artistNote: string;
+    controllerImage: string;
+    droneVideo: string;
+    gallery: Record<string, string>;
+  };
 };
 
 export const DEFAULT_SITE_SETTINGS: SiteSettings = {
@@ -132,6 +151,35 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
     youtube: "",
     facebook: "",
   },
+  theme: {
+    background: "#211f1d",
+    foreground: "#f4efe8",
+    primary: "#dfb970",
+    card: "#292624",
+    radius: 4,
+    headingScale: 1,
+    sectionOrder: [
+      "hero",
+      "portfolio",
+      "drone",
+      "ad",
+      "artist-profile",
+      "services",
+      "about",
+      "testimonials",
+      "inquiry",
+    ],
+  },
+  media: {
+    titleIcon: "/sr-studio-mark.svg",
+    heroVideo: "/videos/indian-wedding.mp4",
+    heroPoster: "",
+    artistPortrait: "",
+    artistNote: "",
+    controllerImage: "/controller.png",
+    droneVideo: "/drone_optimized.mp4",
+    gallery: {},
+  },
 };
 
 export function siteSettingsFrom(value: unknown): SiteSettings {
@@ -146,6 +194,19 @@ export function siteSettingsFrom(value: unknown): SiteSettings {
     artist: { ...DEFAULT_SITE_SETTINGS.artist, ...source.artist },
     inquiry: { ...DEFAULT_SITE_SETTINGS.inquiry, ...source.inquiry },
     footer: { ...DEFAULT_SITE_SETTINGS.footer, ...source.footer },
+    theme: { ...DEFAULT_SITE_SETTINGS.theme, ...source.theme },
+    media: {
+      ...DEFAULT_SITE_SETTINGS.media,
+      ...source.media,
+      gallery:
+        source.media &&
+        typeof source.media === "object" &&
+        source.media.gallery &&
+        typeof source.media.gallery === "object" &&
+        !Array.isArray(source.media.gallery)
+          ? source.media.gallery
+          : DEFAULT_SITE_SETTINGS.media.gallery,
+    },
     services: Array.isArray(source.services)
       ? source.services
       : DEFAULT_SITE_SETTINGS.services,

@@ -2,9 +2,18 @@ import DronePage from "./DroneModel.jsx";
 import "./DroneShowcase.css";
 
 /** The controller feed and the interactive aircraft share the same showcase. */
-export function DroneShowcase() {
+export function DroneShowcase({
+  controllerImage = "/controller.png",
+  droneVideo = "/drone_optimized.mp4",
+}: {
+  controllerImage?: string;
+  droneVideo?: string;
+}) {
   return (
-    <section className="drone-showcase section-mask" aria-labelledby="aerial-showcase-title">
+    <section
+      className="drone-showcase section-mask"
+      aria-labelledby="aerial-showcase-title"
+    >
       <div className="drone-showcase__inner">
         <div className="drone-showcase__intro">
           <p className="eyebrow">Aerial perspective</p>
@@ -20,13 +29,13 @@ export function DroneShowcase() {
         <div className="drone-showcase__visuals">
           <div className="drone-controller">
             <img
-              src="/controller.png"
+              src={controllerImage}
               alt="Drone remote controller"
               draggable="false"
             />
             <div className="drone-controller__screen" aria-hidden="true">
               <video
-                src="/drone_optimized.mp4"
+                src={droneVideo}
                 autoPlay
                 muted
                 loop
