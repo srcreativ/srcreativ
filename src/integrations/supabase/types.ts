@@ -122,6 +122,99 @@ export type Database = {
         };
         Relationships: [];
       };
+      vdp_hall_of_fame: {
+        Row: {
+          category: string;
+          certificate_id: string;
+          created_at: string;
+          featured: boolean;
+          handle: string;
+          id: string;
+          name: string;
+          note: string;
+          profile_url: string | null;
+          published: boolean;
+          recognition_date: string;
+          reference_id: string | null;
+          severity: string;
+          updated_at: string;
+        };
+        Insert: {
+          category: string;
+          certificate_id?: string;
+          created_at?: string;
+          featured?: boolean;
+          handle: string;
+          id?: string;
+          name: string;
+          note: string;
+          profile_url?: string | null;
+          published?: boolean;
+          recognition_date: string;
+          reference_id?: string | null;
+          severity: string;
+          updated_at?: string;
+        };
+        Update: {
+          category?: string;
+          featured?: boolean;
+          handle?: string;
+          name?: string;
+          note?: string;
+          profile_url?: string | null;
+          published?: boolean;
+          recognition_date?: string;
+          reference_id?: string | null;
+          severity?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      vdp_program_settings: {
+        Row: { data: Json; id: string; updated_at: string };
+        Insert: { data: Json; id?: string; updated_at?: string };
+        Update: { data?: Json; id?: string; updated_at?: string };
+        Relationships: [];
+      };
+      vdp_reports: {
+        Row: {
+          affected_asset: string;
+          category: string;
+          created_at: string;
+          id: string;
+          internal_notes: string;
+          profile_url: string | null;
+          proof_of_concept: string;
+          reference_id: string;
+          researcher_email: string;
+          researcher_name: string;
+          severity: string;
+          status: string;
+          updated_at: string;
+        };
+        Insert: {
+          affected_asset: string;
+          category: string;
+          created_at?: string;
+          id?: string;
+          internal_notes?: string;
+          profile_url?: string | null;
+          proof_of_concept: string;
+          reference_id: string;
+          researcher_email: string;
+          researcher_name: string;
+          severity: string;
+          status?: string;
+          updated_at?: string;
+        };
+        Update: {
+          internal_notes?: string;
+          severity?: string;
+          status?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       user_roles: {
         Row: {
           id: string;

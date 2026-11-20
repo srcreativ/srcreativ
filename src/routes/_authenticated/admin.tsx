@@ -17,12 +17,24 @@ import {
   Pencil,
   Smartphone,
   X,
+  Download,
+  Plus,
+  Save,
+  ShieldAlert,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { AppInstallPrompt } from "@/components/AppInstallPrompt";
 import { SITE } from "@/lib/site-config";
 import { DEFAULT_SITE_SETTINGS, siteSettingsFrom } from "@/lib/site-settings";
+import {
+  DEFAULT_VDP_HALL,
+  DEFAULT_VDP_SETTINGS,
+  vdpSettingsFrom,
+  type VdpHallEntry,
+  type VdpSettings,
+} from "@/lib/vdp-settings";
+import { downloadSecurityCertificate } from "@/lib/security-certificate";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
@@ -116,6 +128,7 @@ function Admin() {
             <InquiryAlerts />
             <MobileAdminTools />
             <SiteEditor />
+            <VdpManager />
             <Analytics />
             <GalleryManager />
             <Inquiries />
@@ -273,16 +286,14 @@ function SiteEditor() {
       return;
     }
     setSaving(true);
-    const { error } = await supabase
-      .from("site_settings")
-      .upsert(
-        {
-          id: "default",
-          data: JSON.parse(draft),
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "id" },
-      );
+    const { error } = await supabase.from("site_settings").upsert(
+      {
+        id: "default",
+        data: JSON.parse(draft),
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "id" },
+    );
     setSaving(false);
     if (error) {
       toast.error(error.message);
@@ -383,6 +394,657 @@ function SiteEditor() {
         </div>
       </div>
     </section>
+  );
+}
+
+function VdpManager() {
+  const qc = useQueryClient();
+  const [tab, setTab] = useState<"reports" | "hall" | "policy">("reports");
+  const [settings, setSettings] = useState<VdpSettings>(DEFAULT_VDP_SETTINGS);
+  const [draftEntry, setDraftEntry] = useState<VdpHallEntry | null>(null);
+  const [busy, setBusy] = useState(false);
+  const { data: storedSettings } = useQuery({
+    queryKey: ["vdp-program-settings-admin"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("vdp_program_settings")
+        .select("data")
+        .eq("id", "default")
+        .maybeSingle();
+      if (error) throw error;
+      return data?.data;
+    },
+    retry: false,
+  });
+  const { data: hall = [] } = useQuery({
+    queryKey: ["vdp-hall-admin"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("vdp_hall_of_fame")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+    retry: false,
+  });
+  const { data: reports = [] } = useQuery({
+    queryKey: ["vdp-reports-admin"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("vdp_reports")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+    retry: false,
+  });
+
+  useEffect(
+    () => setSettings(vdpSettingsFrom(storedSettings)),
+    [storedSettings],
+  );
+  const entries: VdpHallEntry[] = hall.length
+    ? hall.map((entry) => ({
+        id: entry.id,
+        name: entry.name,
+        handle: entry.handle,
+        category: entry.category,
+        severity: entry.severity as VdpHallEntry["severity"],
+        date: entry.recognition_date,
+        refId: entry.reference_id ?? "",
+        profileUrl: entry.profile_url || "",
+        note: entry.note,
+        featured: entry.featured,
+        published: entry.published,
+        certificateId: entry.certificate_id,
+      }))
+    : DEFAULT_VDP_HALL;
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ["vdp-program-settings"] });
+    qc.invalidateQueries({ queryKey: ["vdp-program-settings-admin"] });
+    qc.invalidateQueries({ queryKey: ["vdp-hall-public"] });
+    qc.invalidateQueries({ queryKey: ["vdp-hall-admin"] });
+    qc.invalidateQueries({ queryKey: ["vdp-reports-admin"] });
+  };
+  const saveSettings = async () => {
+    setBusy(true);
+    const { error } = await supabase
+      .from("vdp_program_settings")
+      .upsert(
+        { id: "default", data: settings, updated_at: new Date().toISOString() },
+        { onConflict: "id" },
+      );
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    refresh();
+    toast.success("VDP policy published");
+  };
+  const saveEntry = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (
+      !draftEntry?.name.trim() ||
+      !draftEntry.handle.trim() ||
+      !draftEntry.note.trim()
+    )
+      return toast.error("Name, handle, and recognition note are required");
+    setBusy(true);
+    const payload = {
+      name: draftEntry.name.trim(),
+      handle: draftEntry.handle.trim(),
+      category: draftEntry.category.trim(),
+      severity: draftEntry.severity,
+      recognition_date: draftEntry.date.trim(),
+      reference_id: draftEntry.refId.trim() || null,
+      profile_url: draftEntry.profileUrl.trim() || null,
+      note: draftEntry.note.trim(),
+      featured: draftEntry.featured,
+      published: draftEntry.published,
+      updated_at: new Date().toISOString(),
+    };
+    const request = draftEntry.id.startsWith("default-")
+      ? supabase.from("vdp_hall_of_fame").insert(payload)
+      : supabase
+          .from("vdp_hall_of_fame")
+          .update(payload)
+          .eq("id", draftEntry.id);
+    const { error } = await request;
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    setDraftEntry(null);
+    refresh();
+    toast.success("Hall of Fame entry saved");
+  };
+  const updateReport = async (id: string, status: string, severity: string) => {
+    const { error } = await supabase
+      .from("vdp_reports")
+      .update({ status, severity, updated_at: new Date().toISOString() })
+      .eq("id", id);
+    if (error) toast.error(error.message);
+    else {
+      refresh();
+      toast.success("Triage status updated");
+    }
+  };
+  const field =
+    "w-full rounded-xl border border-input bg-background px-3.5 py-2.5 text-sm outline-none transition focus:border-primary";
+  const addEntry = () =>
+    setDraftEntry({
+      id: `default-${crypto.randomUUID()}`,
+      name: "",
+      handle: "",
+      category: "IDOR / Broken Access Control",
+      severity: "High",
+      date: new Date().toLocaleString("en-US", {
+        month: "long",
+        year: "numeric",
+      }),
+      refId: "",
+      profileUrl: "",
+      note: "",
+      featured: false,
+      published: true,
+      certificateId: crypto.randomUUID(),
+    });
+
+  return (
+    <section className="rounded-3xl border border-primary/40 bg-card p-6 shadow-lg shadow-black/10">
+      <div className="flex flex-col justify-between gap-4 border-b border-border pb-6 lg:flex-row lg:items-end">
+        <div>
+          <p className="eyebrow">Security operations · trust</p>
+          <h2 className="mt-2 flex items-center gap-2 text-2xl font-light">
+            <ShieldAlert className="h-5 w-5 text-primary" /> VDP &{" "}
+            <i className="font-serif text-gold">Hall of Fame</i>
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+            Triage security reports, publish researcher acknowledgements,
+            configure your disclosure policy, and issue verifiable PDF
+            certificates.
+          </p>
+        </div>
+        <a
+          href="/vulnerability-disclosure"
+          target="_blank"
+          rel="noreferrer"
+          className="rounded-full border border-primary px-4 py-2 text-center text-xs font-semibold uppercase tracking-[0.12em] text-primary hover:bg-primary hover:text-primary-foreground"
+        >
+          Open public VDP
+        </a>
+      </div>
+      <div className="mt-6 flex flex-wrap gap-2">
+        {(
+          [
+            ["reports", "Vulnerability reports"],
+            ["hall", "Hall of Fame"],
+            ["policy", "Policy & security.txt"],
+          ] as const
+        ).map(([name, label]) => (
+          <button
+            key={name}
+            type="button"
+            onClick={() => setTab(name)}
+            className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.11em] ${tab === name ? "border-primary bg-primary/15 text-primary" : "border-border text-muted-foreground hover:text-primary"}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {tab === "reports" && (
+        <div className="mt-6 overflow-hidden rounded-2xl border border-border">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[52rem] text-left text-sm">
+              <thead className="bg-background text-xs uppercase tracking-wider text-muted-foreground">
+                <tr>
+                  <th className="p-4">Reference</th>
+                  <th className="p-4">Researcher & target</th>
+                  <th className="p-4">Proof of concept</th>
+                  <th className="p-4">Triage</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {reports.map((report) => (
+                  <ReportRow
+                    key={report.id}
+                    report={report}
+                    onSave={updateReport}
+                  />
+                ))}
+                {reports.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={4}
+                      className="p-8 text-center text-muted-foreground"
+                    >
+                      No VDP reports yet. Public reports will appear here after
+                      the migration is applied.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+      {tab === "hall" && (
+        <div className="mt-6">
+          <div className="mb-4 flex justify-end">
+            <button
+              type="button"
+              onClick={addEntry}
+              className="inline-flex items-center gap-2 rounded-full bg-gold px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-primary-foreground"
+            >
+              <Plus className="h-4 w-4" /> Add researcher
+            </button>
+          </div>
+          {draftEntry && (
+            <form
+              onSubmit={saveEntry}
+              className="mb-6 grid gap-4 rounded-2xl border border-primary/50 bg-background p-5 md:grid-cols-2"
+            >
+              <h3 className="md:col-span-2 text-xl font-light">
+                {draftEntry.id.startsWith("default-") ? "Add" : "Edit"} Guardian
+                entry
+              </h3>
+              <VdpInput
+                label="Researcher name"
+                value={draftEntry.name}
+                onChange={(name) => setDraftEntry({ ...draftEntry, name })}
+              />
+              <VdpInput
+                label="Handle / alias"
+                value={draftEntry.handle}
+                onChange={(handle) => setDraftEntry({ ...draftEntry, handle })}
+              />
+              <VdpInput
+                label="Vulnerability / category"
+                value={draftEntry.category}
+                onChange={(category) =>
+                  setDraftEntry({ ...draftEntry, category })
+                }
+              />
+              <label className="text-sm">
+                Severity
+                <select
+                  value={draftEntry.severity}
+                  onChange={(event) =>
+                    setDraftEntry({
+                      ...draftEntry,
+                      severity: event.target.value as VdpHallEntry["severity"],
+                    })
+                  }
+                  className={`${field} mt-1`}
+                >
+                  <option>Critical</option>
+                  <option>High</option>
+                  <option>Medium</option>
+                  <option>Low</option>
+                </select>
+              </label>
+              <VdpInput
+                label="Recognition date"
+                value={draftEntry.date}
+                onChange={(date) => setDraftEntry({ ...draftEntry, date })}
+              />
+              <VdpInput
+                label="Linked VDP reference"
+                value={draftEntry.refId}
+                onChange={(refId) => setDraftEntry({ ...draftEntry, refId })}
+              />
+              <VdpInput
+                label="External profile URL"
+                value={draftEntry.profileUrl}
+                onChange={(profileUrl) =>
+                  setDraftEntry({ ...draftEntry, profileUrl })
+                }
+              />
+              <div className="md:col-span-2">
+                <label className="text-sm">
+                  Public recognition note
+                  <textarea
+                    value={draftEntry.note}
+                    onChange={(event) =>
+                      setDraftEntry({ ...draftEntry, note: event.target.value })
+                    }
+                    className={`${field} mt-1 min-h-24`}
+                  />
+                </label>
+              </div>
+              <div className="flex flex-wrap gap-5 text-sm md:col-span-2">
+                <label>
+                  <input
+                    checked={draftEntry.featured}
+                    onChange={(event) =>
+                      setDraftEntry({
+                        ...draftEntry,
+                        featured: event.target.checked,
+                      })
+                    }
+                    type="checkbox"
+                  />{" "}
+                  Featured Guardian
+                </label>
+                <label>
+                  <input
+                    checked={draftEntry.published}
+                    onChange={(event) =>
+                      setDraftEntry({
+                        ...draftEntry,
+                        published: event.target.checked,
+                      })
+                    }
+                    type="checkbox"
+                  />{" "}
+                  Published on public site
+                </label>
+              </div>
+              <div className="flex gap-3 md:col-span-2">
+                <button
+                  disabled={busy}
+                  className="rounded-full bg-gold px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-primary-foreground"
+                >
+                  {busy ? "Saving…" : "Save entry"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDraftEntry(null)}
+                  className="rounded-full border border-border px-5 py-2.5 text-xs text-muted-foreground"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          )}
+          <div className="grid gap-4 md:grid-cols-2">
+            {entries.map((entry) => (
+              <article
+                key={entry.id}
+                className={`rounded-2xl border p-5 ${entry.published ? "border-border bg-background" : "border-dashed border-primary/30 bg-background/50 opacity-75"}`}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="font-serif text-2xl">{entry.name}</p>
+                    <p className="font-mono text-xs text-primary">
+                      {entry.handle}
+                    </p>
+                  </div>
+                  <span className="rounded-full border border-primary/40 px-2 py-1 text-[10px] uppercase text-primary">
+                    {entry.severity}
+                  </span>
+                </div>
+                <p className="mt-3 text-sm text-muted-foreground">
+                  {entry.category} · {entry.date}
+                </p>
+                <p className="mt-4 line-clamp-3 font-serif text-sm italic">
+                  “{entry.note}”
+                </p>
+                <div className="mt-5 flex flex-wrap gap-2 border-t border-border pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setDraftEntry(entry)}
+                    className="rounded-full border border-primary/50 px-3 py-1.5 text-xs text-primary"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => downloadSecurityCertificate(entry)}
+                    className="inline-flex items-center gap-1 rounded-full border border-primary/50 px-3 py-1.5 text-xs text-primary"
+                  >
+                    <Download className="h-3.5 w-3.5" /> Certificate
+                  </button>
+                  {!entry.id.startsWith("default-") && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (
+                          !window.confirm(
+                            `Remove ${entry.name} from the Hall of Fame?`,
+                          )
+                        )
+                          return;
+                        const { error } = await supabase
+                          .from("vdp_hall_of_fame")
+                          .delete()
+                          .eq("id", entry.id);
+                        if (error) toast.error(error.message);
+                        else {
+                          refresh();
+                          toast.success("Hall of Fame entry removed");
+                        }
+                      }}
+                      className="rounded-full border border-destructive px-3 py-1.5 text-xs text-destructive"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      )}
+      {tab === "policy" && (
+        <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_0.9fr]">
+          <div className="space-y-4 rounded-2xl border border-border bg-background p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="eyebrow">Intake controls</p>
+                <h3 className="mt-1 text-xl font-light">
+                  Program policy & encryption
+                </h3>
+              </div>
+              <label className="inline-flex items-center gap-2 text-sm text-primary">
+                <input
+                  type="checkbox"
+                  checked={settings.programActive}
+                  onChange={(event) =>
+                    setSettings({
+                      ...settings,
+                      programActive: event.target.checked,
+                    })
+                  }
+                />
+                {settings.programActive ? "Active" : "Paused"}
+              </label>
+            </div>
+            <VdpInput
+              label="Security contact email"
+              value={settings.securityEmail}
+              onChange={(securityEmail) =>
+                setSettings({ ...settings, securityEmail })
+              }
+            />
+            <VdpInput
+              label="RFC 9116 expiry date"
+              value={settings.expiryDate}
+              onChange={(expiryDate) =>
+                setSettings({ ...settings, expiryDate })
+              }
+            />
+            <VdpInput
+              label="PGP key fingerprint"
+              value={settings.pgpFingerprint}
+              onChange={(pgpFingerprint) =>
+                setSettings({ ...settings, pgpFingerprint })
+              }
+            />
+            <VdpListEditor
+              label="In-scope domains & endpoints"
+              value={settings.inScopeAssets}
+              onChange={(inScopeAssets) =>
+                setSettings({ ...settings, inScopeAssets })
+              }
+            />
+            <VdpListEditor
+              label="Out-of-scope exclusions"
+              value={settings.outOfScopeRules}
+              onChange={(outOfScopeRules) =>
+                setSettings({ ...settings, outOfScopeRules })
+              }
+            />
+            <button
+              type="button"
+              disabled={busy}
+              onClick={saveSettings}
+              className="inline-flex items-center gap-2 rounded-full bg-gold px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-primary-foreground"
+            >
+              <Save className="h-4 w-4" />{" "}
+              {busy ? "Publishing…" : "Save & publish policy"}
+            </button>
+          </div>
+          <div className="rounded-2xl border border-border bg-background p-5">
+            <p className="eyebrow">RFC 9116 generator</p>
+            <h3 className="mt-1 text-xl font-light">
+              /.well-known/security.txt
+            </h3>
+            <pre className="mt-5 whitespace-pre-wrap rounded-xl border border-border bg-card p-4 text-xs leading-relaxed text-muted-foreground">{`Contact: mailto:${settings.securityEmail}\nExpires: ${settings.expiryDate}T00:00:00.000Z\nEncryption: https://srstudio.in/.well-known/pgp-key.asc\n# Fingerprint: ${settings.pgpFingerprint}\nAcknowledgments: https://srstudio.in/vulnerability-disclosure#hall-of-fame\nPreferred-Languages: en, hi\nCanonical: https://srstudio.in/.well-known/security.txt\nPolicy: https://srstudio.in/vulnerability-disclosure#scope`}</pre>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function VdpInput({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="block text-sm">
+      {label}
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-1 w-full rounded-xl border border-input bg-background px-3.5 py-2.5 text-sm outline-none focus:border-primary"
+      />
+    </label>
+  );
+}
+function VdpListEditor({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string[];
+  onChange: (value: string[]) => void;
+}) {
+  const [next, setNext] = useState("");
+  return (
+    <div>
+      <p className="text-sm">{label}</p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {value.map((item, index) => (
+          <span
+            key={`${item}-${index}`}
+            className="inline-flex items-center gap-2 rounded-full border border-primary/30 px-3 py-1 text-xs text-primary"
+          >
+            {item}
+            <button
+              type="button"
+              onClick={() => onChange(value.filter((_, i) => i !== index))}
+              aria-label={`Remove ${item}`}
+            >
+              ×
+            </button>
+          </span>
+        ))}
+      </div>
+      <div className="mt-2 flex gap-2">
+        <input
+          value={next}
+          onChange={(event) => setNext(event.target.value)}
+          className="min-w-0 flex-1 rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+          placeholder="Add item"
+        />
+        <button
+          type="button"
+          onClick={() => {
+            const trimmed = next.trim();
+            if (trimmed) {
+              onChange([...value, trimmed]);
+              setNext("");
+            }
+          }}
+          className="rounded-xl border border-primary/50 px-3 text-sm text-primary"
+        >
+          Add
+        </button>
+      </div>
+    </div>
+  );
+}
+function ReportRow({
+  report,
+  onSave,
+}: {
+  report: Database["public"]["Tables"]["vdp_reports"]["Row"];
+  onSave: (id: string, status: string, severity: string) => void;
+}) {
+  const [status, setStatus] = useState(report.status);
+  const [severity, setSeverity] = useState(report.severity);
+  return (
+    <tr className="align-top">
+      <td className="p-4 font-mono text-xs text-primary">
+        {report.reference_id}
+        <p className="mt-2 font-sans text-xs text-muted-foreground">
+          {new Date(report.created_at).toLocaleString()}
+        </p>
+      </td>
+      <td className="p-4">
+        <p>{report.researcher_name}</p>
+        <a
+          className="text-xs text-primary"
+          href={`mailto:${report.researcher_email}`}
+        >
+          {report.researcher_email}
+        </a>
+        <p className="mt-2 max-w-sm break-all font-mono text-xs text-muted-foreground">
+          {report.affected_asset}
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">{report.category}</p>
+      </td>
+      <td className="max-w-xs whitespace-pre-wrap p-4 font-mono text-xs text-muted-foreground">
+        {report.proof_of_concept}
+      </td>
+      <td className="p-4">
+        <select
+          value={status}
+          onChange={(event) => setStatus(event.target.value)}
+          className="mb-2 w-full rounded-lg border border-input bg-background p-2 text-xs"
+        >
+          <option>New</option>
+          <option>Triaging</option>
+          <option>Accepted</option>
+          <option>Fixed</option>
+          <option>Duplicate</option>
+          <option>Informative</option>
+        </select>
+        <select
+          value={severity}
+          onChange={(event) => setSeverity(event.target.value)}
+          className="mb-2 w-full rounded-lg border border-input bg-background p-2 text-xs"
+        >
+          <option>Critical</option>
+          <option>High</option>
+          <option>Medium</option>
+          <option>Low</option>
+        </select>
+        <button
+          type="button"
+          onClick={() => onSave(report.id, status, severity)}
+          className="rounded-full border border-primary/50 px-3 py-1.5 text-xs text-primary"
+        >
+          Save
+        </button>
+      </td>
+    </tr>
   );
 }
 
