@@ -14,22 +14,33 @@ export function DroneShowcase({
       className="drone-showcase section-mask"
       aria-labelledby="aerial-showcase-title"
     >
+      <div className="drone-showcase__ambient" aria-hidden="true" />
+      <div className="drone-aircraft" aria-hidden="true">
+        <DronePage />
+      </div>
       <div className="drone-showcase__inner">
         <div className="drone-showcase__intro">
           <p className="eyebrow">Aerial perspective</p>
           <h2 id="aerial-showcase-title">
             See every celebration from a <em>new angle</em>
           </h2>
-          <p>
+          <p className="drone-showcase__description">
             A live studio view of the camera system we use to frame the scale,
             energy, and detail of a wedding day.
           </p>
+          <p className="drone-showcase__scroll-cue">
+            Scroll to spin propellers
+          </p>
         </div>
 
-        <div className="drone-showcase__visuals">
-          <div className="drone-aircraft">
-            <DronePage />
-          </div>
+        <div className="drone-showcase__story" aria-hidden="true">
+          <p className="eyebrow">Aerial films</p>
+          <p>Capturing fleeting moments from a higher perspective.</p>
+          <span>4K · 25 FPS · Stabilized flight</span>
+        </div>
+
+        <div className="drone-showcase__telemetry">
+          <p className="eyebrow">Live 4K telemetry · active</p>
           <div className="drone-controller">
             <img
               src={controllerImage}
@@ -47,6 +58,10 @@ export function DroneShowcase({
                 disablePictureInPicture
               />
             </div>
+          </div>
+          <div className="drone-showcase__readout" aria-hidden="true">
+            <span>623 VANG / 2160p</span>
+            <span>GPS LOCK · 0.9 KM</span>
           </div>
         </div>
       </div>
