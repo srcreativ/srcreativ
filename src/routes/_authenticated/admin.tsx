@@ -1805,11 +1805,13 @@ export function GalleryManager() {
   const qc = useQueryClient();
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [fullPreview, setFullPreview] = useState(false);
   const [title, setTitle] = useState("");
   const [cat, setCat] = useState<string>(CATS[0]!);
   const [tall, setTall] = useState(false);
   const [busy, setBusy] = useState(false);
   const [selected, setSelected] = useState<GalleryImage | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState<GalleryImage | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editCategory, setEditCategory] = useState<string>(CATS[0]!);
@@ -1822,6 +1824,7 @@ export function GalleryManager() {
     }
     const url = URL.createObjectURL(file);
     setPreview(url);
+    setFullPreview(true);
     return () => URL.revokeObjectURL(url);
   }, [file]);
 
@@ -1900,8 +1903,62 @@ export function GalleryManager() {
         .eq("id", image.id);
       if (error) throw error;
       if (selected?.id === image.id) setSelected(null);
+      setSelectedIds((current) => {
+        const next = new Set(current);
+        next.delete(image.id);
+        return next;
+      });
       if (editing?.id === image.id) setEditing(null);
       toast.success("Photo deleted");
+      qc.invalidateQueries({ queryKey: ["gallery-images"] });
+    } catch (error) {
+      toast.error((error as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const toggleImage = (id: string) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const deleteSelected = async () => {
+    const ids = [...selectedIds];
+    if (!ids.length) return;
+    if (
+      !window.confirm(
+        `Delete ${ids.length} selected ${ids.length === 1 ? "photo" : "photos"}? This cannot be undone.`,
+      )
+    )
+      return;
+    const selectedImages = (images ?? []).filter((image) =>
+      ids.includes(image.id),
+    );
+    setBusy(true);
+    try {
+      const paths = selectedImages.flatMap((image) =>
+        image.storage_path ? [image.storage_path] : [],
+      );
+      if (paths.length) {
+        const { error } = await supabase.storage.from("gallery").remove(paths);
+        if (error) throw error;
+      }
+      const { error } = await supabase
+        .from("gallery_images")
+        .delete()
+        .in("id", ids);
+      if (error) throw error;
+      setSelectedIds(new Set());
+      setSelected(null);
+      setEditing(null);
+      toast.success(
+        `${ids.length} ${ids.length === 1 ? "photo" : "photos"} deleted`,
+      );
       qc.invalidateQueries({ queryKey: ["gallery-images"] });
     } catch (error) {
       toast.error((error as Error).message);
@@ -1992,14 +2049,46 @@ export function GalleryManager() {
             <img
               src={preview}
               alt="Selected upload preview"
-              className="h-52 w-full object-cover"
+              className="max-h-[72vh] min-h-64 w-full cursor-zoom-in object-contain"
+              onClick={() => setFullPreview(true)}
             />
-            <p className="absolute bottom-0 inset-x-0 bg-overlay/80 px-4 py-2 text-xs text-foreground">
-              Preview: {file?.name}
-            </p>
+            <div className="absolute bottom-0 inset-x-0 flex items-center justify-between gap-3 bg-overlay/85 px-4 py-3 text-xs text-foreground">
+              <span>Preview: {file?.name}</span>
+              <button
+                type="button"
+                onClick={() => setFullPreview(true)}
+                className="rounded-full border border-primary px-3 py-1 font-semibold uppercase tracking-wider text-primary"
+              >
+                Full-page preview
+              </button>
+            </div>
           </div>
         )}
       </form>
+      {fullPreview && preview && (
+        <div
+          className="fixed inset-0 z-[100] grid place-items-center bg-black/95 p-4 sm:p-8"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Full image preview"
+          onClick={() => setFullPreview(false)}
+        >
+          <button
+            type="button"
+            onClick={() => setFullPreview(false)}
+            aria-label="Close full image preview"
+            className="absolute right-5 top-5 rounded-full border border-primary/70 bg-background/90 p-3 text-primary"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <img
+            src={preview}
+            alt={`Full preview of ${file?.name ?? "selected upload"}`}
+            className="max-h-full max-w-full rounded-lg object-contain shadow-[0_0_80px_rgba(228,180,79,0.18)]"
+            onClick={(event) => event.stopPropagation()}
+          />
+        </div>
+      )}
       {selected && (
         <div className="mt-6 grid gap-5 rounded-3xl border border-primary/50 bg-card p-5 sm:grid-cols-[10rem_1fr]">
           <img
@@ -2096,12 +2185,53 @@ export function GalleryManager() {
           </div>
         </form>
       )}
-      <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+      {!!images?.length && (
+        <div className="mt-6 flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-card p-3 shadow-lg shadow-black/10">
+          <button
+            type="button"
+            onClick={() =>
+              setSelectedIds(new Set(images.map((image) => image.id)))
+            }
+            className="rounded-full border border-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-primary"
+          >
+            Select all
+          </button>
+          <button
+            type="button"
+            disabled={!selectedIds.size}
+            onClick={() => setSelectedIds(new Set())}
+            className="rounded-full border border-border px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground disabled:opacity-40"
+          >
+            Deselect all
+          </button>
+          <span className="rounded-full border border-border px-3 py-2 font-mono text-xs text-muted-foreground">
+            {selectedIds.size} selected
+          </span>
+          <button
+            type="button"
+            disabled={!selectedIds.size || busy}
+            onClick={deleteSelected}
+            className="ml-auto rounded-full border border-destructive px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-destructive disabled:opacity-40"
+          >
+            Delete selected ({selectedIds.size})
+          </button>
+        </div>
+      )}
+      <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
         {images?.map((img) => (
           <div
             key={img.id}
-            className={`group relative overflow-hidden rounded-2xl border bg-card shadow-lg shadow-black/10 ${selected?.id === img.id ? "border-primary" : "border-border"}`}
+            className={`group relative overflow-hidden rounded-2xl border bg-card shadow-lg shadow-black/10 ${selected?.id === img.id || selectedIds.has(img.id) ? "border-primary" : "border-border"}`}
           >
+            <label className="absolute left-3 top-3 z-10 grid h-7 w-7 cursor-pointer place-items-center rounded-md border border-white/60 bg-background/75 text-primary shadow-lg">
+              <input
+                type="checkbox"
+                checked={selectedIds.has(img.id)}
+                onChange={() => toggleImage(img.id)}
+                className="h-4 w-4 accent-[color:var(--primary)]"
+                aria-label={`Select ${img.title} for deletion`}
+              />
+            </label>
             <button
               type="button"
               onClick={() => setSelected(img)}

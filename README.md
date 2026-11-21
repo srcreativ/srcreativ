@@ -1,48 +1,18 @@
-# SR Studio
+<div align="center">
+<img src="rsc/logo.png">
+</div>
+
+![TanStack Start](https://img.shields.io/badge/TanStack_Start-222?style=for-the-badge&logo=react&logoColor=61DAFB)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
+![React](https://img.shields.io/badge/React-61DAFB?style=for-the-badge&logo=react&logoColor=black)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=for-the-badge&logo=tailwind-css&logoColor=white)
+![Cloudflare](https://img.shields.io/badge/Cloudflare-F38020?style=for-the-badge&logo=cloudflare&logoColor=white)   
 
 SR Studio is a cinematic wedding photography and film portfolio, with an
 editable admin panel, gallery management, VDP/hall-of-fame programme, and
 Cloudflare Workers deployment.
 
-## Development
-
-You need Node.js and npm.
-
-```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
-```
-
-## Commands
-
-```sh
-npm run dev
-npm run build
-npm test
-```
-
-## Built with
-
-- TanStack Start
-- TypeScript
-- React
-- Tailwind CSS
-- Supabase (authentication, database, storage)
-- Cloudflare Workers (production hosting)
-
-## Production repository files
-
-- [LICENSE](./LICENSE) — proprietary usage terms.
-- [SECURITY.md](./SECURITY.md) — private vulnerability reporting policy.
-- [CONTRIBUTING.md](./CONTRIBUTING.md) — approved contribution workflow.
-- `.github/` — Dependabot, bug-report form, and PR checklist.
-
-Never commit `.env`, `.dev.vars`, API keys, OAuth secrets, or service-role
-keys. See [HOSTING_GUIDE.md](./HOSTING_GUIDE.md) for deployment and environment
-configuration.
-
-## Self-Hosting (Without Lovable)
-
-For a complete step-by-step guide to hosting this site independently on **Cloudflare Workers**, **Vercel**, **Netlify**, or a **VPS / Docker container** using your own Supabase project, refer to the [HOSTING_GUIDE.md](./HOSTING_GUIDE.md).
+[SECURITY](SECURITY.md) |
+[LICENSE](LICENSE.md) |
+[CONTRIBUTING](CONTRIBUTING.md) |
+[CODE_OF_CONDUCT](CODE_OF_CONDUCT.md)
