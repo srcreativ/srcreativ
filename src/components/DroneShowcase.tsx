@@ -33,12 +33,6 @@ export function DroneShowcase({
           </p>
         </div>
 
-        <div className="drone-showcase__story" aria-hidden="true">
-          <p className="eyebrow">Aerial films</p>
-          <p>Capturing fleeting moments from a higher perspective.</p>
-          <span>4K · 25 FPS · Stabilized flight</span>
-        </div>
-
         <div className="drone-showcase__telemetry">
           <p className="eyebrow">Live 4K telemetry · active</p>
           <div className="drone-controller">
@@ -59,8 +53,12 @@ export function DroneShowcase({
               />
             </div>
           </div>
+          <div className="drone-showcase__story">
+            <p className="eyebrow">Aerial films</p>
+            <p>Capturing fleeting moments from a higher perspective.</p>
+          </div>
           <div className="drone-showcase__readout" aria-hidden="true">
-            <span>623 VANG / 2160p</span>
+            <span>4K · 25 FPS · Stabilized flight</span>
             <span>GPS LOCK · 0.9 KM</span>
           </div>
         </div>

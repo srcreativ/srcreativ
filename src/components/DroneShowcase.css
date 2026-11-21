@@ -28,15 +28,12 @@
   z-index: 3;
   display: grid;
   min-height: 38rem;
-  max-width: 92rem;
+  max-width: 88rem;
   margin: 0 auto;
-  grid-template-columns: minmax(17rem, 0.94fr) minmax(12rem, 0.62fr) minmax(
-      15rem,
-      0.82fr
-    );
+  grid-template-columns: minmax(18rem, 0.82fr) minmax(22rem, 1fr);
   align-items: center;
-  gap: clamp(1.5rem, 4vw, 5rem);
-  padding: 5rem clamp(1.5rem, 5vw, 5rem) 4.5rem clamp(12rem, 18vw, 19rem);
+  gap: clamp(2.5rem, 8vw, 10rem);
+  padding: 5rem clamp(2rem, 6vw, 6rem) 4.5rem;
 }
 
 .drone-showcase__intro h2 {
@@ -73,8 +70,8 @@
 }
 
 .drone-showcase__story {
-  align-self: center;
-  max-width: 15rem;
+  max-width: 21rem;
+  margin-top: 0.6rem;
   color: var(--foreground);
 }
 
@@ -87,11 +84,10 @@
   color: color-mix(in oklab, var(--foreground) 68%, transparent);
 }
 
-.drone-showcase__story > span,
 .drone-showcase__readout {
   display: flex;
   gap: 0.8rem;
-  margin-top: 4rem;
+  margin-top: 1.6rem;
   font-size: 0.52rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -100,7 +96,7 @@
 
 .drone-showcase__telemetry {
   justify-self: end;
-  width: min(100%, 23rem);
+  width: min(100%, 29rem);
 }
 
 .drone-showcase__telemetry > .eyebrow {
@@ -110,7 +106,7 @@
 
 .drone-controller {
   position: relative;
-  width: min(100%, 21rem);
+  width: min(100%, 26rem);
   justify-self: center;
   aspect-ratio: 1;
 }
@@ -147,8 +143,9 @@
   z-index: 1;
   top: 0;
   bottom: 0;
-  left: clamp(-33rem, -25vw, -16rem);
-  width: clamp(42rem, 54vw, 62rem);
+  right: clamp(-37rem, -27vw, -18rem);
+  left: auto;
+  width: clamp(52rem, 63vw, 76rem);
   height: 100%;
   pointer-events: none;
 }
@@ -183,15 +180,16 @@
   .drone-showcase.section-mask > .drone-aircraft {
     top: 12rem;
     bottom: auto;
-    left: -19rem;
-    width: 38rem;
+    right: -22rem;
+    left: auto;
+    width: 43rem;
     height: 24rem;
     opacity: 0.42;
   }
 
   .drone-showcase__telemetry {
     justify-self: center;
-    width: min(100%, 17rem);
+    width: min(100%, 20rem);
   }
 
   .drone-showcase__telemetry > .eyebrow {
