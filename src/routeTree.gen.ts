@@ -14,6 +14,13 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as VulnerabilityDisclosureRouteImport } from './routes/vulnerability-disclosure'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
+import { Route as AuthenticatedAdminEditRouteImport } from './routes/_authenticated/admin/edit'
+import { Route as AuthenticatedAdminGalleryRouteImport } from './routes/_authenticated/admin/gallery'
+import { Route as AuthenticatedAdminLogRouteImport } from './routes/_authenticated/admin/log'
+import { Route as AuthenticatedAdminSecurityRouteImport } from './routes/_authenticated/admin/security'
+import { Route as AuthenticatedAdminTrackRouteImport } from './routes/_authenticated/admin/track'
+import { Route as AuthenticatedAdminVdpRouteImport } from './routes/_authenticated/admin/vdp'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -39,18 +46,68 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
+const AuthenticatedAdminEditRoute = AuthenticatedAdminEditRouteImport.update({
+  id: '/edit',
+  path: '/edit',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
+const AuthenticatedAdminGalleryRoute =
+  AuthenticatedAdminGalleryRouteImport.update({
+    id: '/gallery',
+    path: '/gallery',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminLogRoute = AuthenticatedAdminLogRouteImport.update({
+  id: '/log',
+  path: '/log',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
+const AuthenticatedAdminSecurityRoute =
+  AuthenticatedAdminSecurityRouteImport.update({
+    id: '/security',
+    path: '/security',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminTrackRoute = AuthenticatedAdminTrackRouteImport.update({
+  id: '/track',
+  path: '/track',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
+const AuthenticatedAdminVdpRoute = AuthenticatedAdminVdpRouteImport.update({
+  id: '/vdp',
+  path: '/vdp',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/vulnerability-disclosure': typeof VulnerabilityDisclosureRoute
-  '/admin': typeof AuthenticatedAdminRoute
+  '/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/admin/edit': typeof AuthenticatedAdminEditRoute
+  '/admin/gallery': typeof AuthenticatedAdminGalleryRoute
+  '/admin/log': typeof AuthenticatedAdminLogRoute
+  '/admin/security': typeof AuthenticatedAdminSecurityRoute
+  '/admin/track': typeof AuthenticatedAdminTrackRoute
+  '/admin/vdp': typeof AuthenticatedAdminVdpRoute
+  '/admin/': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/vulnerability-disclosure': typeof VulnerabilityDisclosureRoute
-  '/admin': typeof AuthenticatedAdminRoute
+  '/admin/edit': typeof AuthenticatedAdminEditRoute
+  '/admin/gallery': typeof AuthenticatedAdminGalleryRoute
+  '/admin/log': typeof AuthenticatedAdminLogRoute
+  '/admin/security': typeof AuthenticatedAdminSecurityRoute
+  '/admin/track': typeof AuthenticatedAdminTrackRoute
+  '/admin/vdp': typeof AuthenticatedAdminVdpRoute
+  '/admin': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -58,13 +115,41 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/vulnerability-disclosure': typeof VulnerabilityDisclosureRoute
-  '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/_authenticated/admin/edit': typeof AuthenticatedAdminEditRoute
+  '/_authenticated/admin/gallery': typeof AuthenticatedAdminGalleryRoute
+  '/_authenticated/admin/log': typeof AuthenticatedAdminLogRoute
+  '/_authenticated/admin/security': typeof AuthenticatedAdminSecurityRoute
+  '/_authenticated/admin/track': typeof AuthenticatedAdminTrackRoute
+  '/_authenticated/admin/vdp': typeof AuthenticatedAdminVdpRoute
+  '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/vulnerability-disclosure' | '/admin'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/vulnerability-disclosure'
+    | '/admin'
+    | '/admin/edit'
+    | '/admin/gallery'
+    | '/admin/log'
+    | '/admin/security'
+    | '/admin/track'
+    | '/admin/vdp'
+    | '/admin/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/vulnerability-disclosure' | '/admin'
+  to:
+    | '/'
+    | '/auth'
+    | '/vulnerability-disclosure'
+    | '/admin/edit'
+    | '/admin/gallery'
+    | '/admin/log'
+    | '/admin/security'
+    | '/admin/track'
+    | '/admin/vdp'
+    | '/admin'
   id:
     | '__root__'
     | '/'
@@ -72,6 +157,13 @@ export interface FileRouteTypes {
     | '/auth'
     | '/vulnerability-disclosure'
     | '/_authenticated/admin'
+    | '/_authenticated/admin/edit'
+    | '/_authenticated/admin/gallery'
+    | '/_authenticated/admin/log'
+    | '/_authenticated/admin/security'
+    | '/_authenticated/admin/track'
+    | '/_authenticated/admin/vdp'
+    | '/_authenticated/admin/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -118,15 +210,87 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/admin/': {
+      id: '/_authenticated/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/edit': {
+      id: '/_authenticated/admin/edit'
+      path: '/edit'
+      fullPath: '/admin/edit'
+      preLoaderRoute: typeof AuthenticatedAdminEditRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/gallery': {
+      id: '/_authenticated/admin/gallery'
+      path: '/gallery'
+      fullPath: '/admin/gallery'
+      preLoaderRoute: typeof AuthenticatedAdminGalleryRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/log': {
+      id: '/_authenticated/admin/log'
+      path: '/log'
+      fullPath: '/admin/log'
+      preLoaderRoute: typeof AuthenticatedAdminLogRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/security': {
+      id: '/_authenticated/admin/security'
+      path: '/security'
+      fullPath: '/admin/security'
+      preLoaderRoute: typeof AuthenticatedAdminSecurityRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/track': {
+      id: '/_authenticated/admin/track'
+      path: '/track'
+      fullPath: '/admin/track'
+      preLoaderRoute: typeof AuthenticatedAdminTrackRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/vdp': {
+      id: '/_authenticated/admin/vdp'
+      path: '/vdp'
+      fullPath: '/admin/vdp'
+      preLoaderRoute: typeof AuthenticatedAdminVdpRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
   }
 }
 
+interface AuthenticatedAdminRouteChildren {
+  AuthenticatedAdminEditRoute: typeof AuthenticatedAdminEditRoute
+  AuthenticatedAdminGalleryRoute: typeof AuthenticatedAdminGalleryRoute
+  AuthenticatedAdminLogRoute: typeof AuthenticatedAdminLogRoute
+  AuthenticatedAdminSecurityRoute: typeof AuthenticatedAdminSecurityRoute
+  AuthenticatedAdminTrackRoute: typeof AuthenticatedAdminTrackRoute
+  AuthenticatedAdminVdpRoute: typeof AuthenticatedAdminVdpRoute
+  AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
+}
+
+const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
+  AuthenticatedAdminEditRoute: AuthenticatedAdminEditRoute,
+  AuthenticatedAdminGalleryRoute: AuthenticatedAdminGalleryRoute,
+  AuthenticatedAdminLogRoute: AuthenticatedAdminLogRoute,
+  AuthenticatedAdminSecurityRoute: AuthenticatedAdminSecurityRoute,
+  AuthenticatedAdminTrackRoute: AuthenticatedAdminTrackRoute,
+  AuthenticatedAdminVdpRoute: AuthenticatedAdminVdpRoute,
+  AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
+}
+
+const AuthenticatedAdminRouteWithChildren =
+  AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
+
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedAdminRoute: AuthenticatedAdminRoute,
+  AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
 }
 
 const AuthenticatedRouteRouteWithChildren =

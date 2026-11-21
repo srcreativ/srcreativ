@@ -1,11 +1,15 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Link,
+  Outlet,
+  useNavigate,
+} from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   Trash2,
   Upload,
-  LogOut,
   Eye,
   Users,
   Mail,
@@ -88,6 +92,15 @@ async function withUploadTimeout<T>(operation: Promise<T>): Promise<T> {
   }
 }
 
+const ADMIN_NAV = [
+  ["Edit", "/admin/edit"],
+  ["Gallery", "/admin/gallery"],
+  ["Tracking", "/admin/track"],
+  ["Logs", "/admin/log"],
+  ["Security", "/admin/security"],
+  ["VDP & HoF", "/admin/vdp"],
+] as const;
+
 function Admin() {
   const { user } = Route.useRouteContext();
   const navigate = useNavigate();
@@ -108,41 +121,73 @@ function Admin() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="border-b border-border">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
+      <header className="border-b border-border bg-background/95 backdrop-blur">
+        <div className="mx-auto flex min-h-16 max-w-7xl flex-wrap items-center justify-between gap-3 px-6 py-3">
           <Link to="/" className="font-semibold tracking-[0.25em]">
             {SITE.name.toUpperCase()}{" "}
             <span className="text-primary">ADMIN</span>
           </Link>
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <span className="hidden sm:inline">{user.email}</span>
+          <nav
+            aria-label="Admin navigation"
+            className="order-3 flex w-full gap-1 overflow-x-auto pb-1 sm:order-2 sm:w-auto sm:pb-0"
+          >
+            {ADMIN_NAV.map(([label, to]) => (
+              <Link
+                key={to}
+                to={to}
+                activeProps={{
+                  className:
+                    "border-primary/60 bg-primary/15 text-primary hover:text-primary",
+                }}
+                className="whitespace-nowrap rounded-full border border-transparent px-3 py-2 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+              >
+                {label}
+              </Link>
+            ))}
+          </nav>
+          <div className="order-2 sm:order-3">
             <button
+              type="button"
               onClick={signOut}
-              className="flex items-center gap-2 rounded-full border border-primary/70 px-4 py-2 text-xs uppercase tracking-[0.14em] transition-colors hover:bg-primary hover:text-primary-foreground"
+              aria-label="Sign out"
+              title="Sign out"
+              className="inline-flex size-9 items-center justify-center rounded-full border border-primary/70 text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
             >
-              <LogOut className="h-4 w-4" /> Sign out
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 27.517 27.517"
+                fill="none"
+                stroke="currentColor"
+                strokeLinecap="round"
+                className="size-4"
+              >
+                <path
+                  d="M6.59 4.072c-9.9528 9.4883-2.6196 21.355 7.1756 21.513 10.452.16815 16.639-12.574 7.4898-21.37"
+                  strokeWidth="3"
+                />
+                <path d="m13.71 2.025.10537 10.999" strokeWidth="4" />
+              </svg>
             </button>
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl space-y-12 px-6 py-10">
+      <main className="mx-auto max-w-7xl space-y-8 px-6 py-10">
         {isLoading ? (
           <p className="text-muted-foreground">Loading…</p>
         ) : !isAdmin ? (
-          <p className="text-muted-foreground">
-            Your account doesn't have admin access.
-          </p>
+          <section className="rounded-3xl border border-destructive/50 bg-card p-8">
+            <p className="eyebrow text-destructive">403 · Forbidden</p>
+            <h1 className="mt-2 text-3xl font-light">Admin access required</h1>
+            <p className="mt-3 text-muted-foreground">
+              This account is authenticated, but it does not have permission to
+              open the SR Studio administration tools.
+            </p>
+          </section>
         ) : (
           <>
             <InquiryAlerts />
             <MobileAdminTools />
-            <SiteEditor />
-            <ThemeMediaStudio />
-            <VdpManager />
-            <Analytics />
-            <GalleryManager />
-            <Inquiries />
-            <AccountSettings />
+            <Outlet />
           </>
         )}
       </main>
@@ -251,7 +296,7 @@ function InquiryAlerts() {
   return null;
 }
 
-function SiteEditor() {
+export function SiteEditor() {
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ["site-settings"],
@@ -439,7 +484,7 @@ const SECTION_LABELS: Record<string, string> = {
   inquiry: "Inquiry",
 };
 
-function ThemeMediaStudio() {
+export function ThemeMediaStudio() {
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ["site-settings-theme-media"],
@@ -826,7 +871,7 @@ function ThemeMediaStudio() {
   );
 }
 
-function VdpManager() {
+export function VdpManager() {
   const qc = useQueryClient();
   const [tab, setTab] = useState<"reports" | "hall" | "policy">("reports");
   const [settings, setSettings] = useState<VdpSettings>(DEFAULT_VDP_SETTINGS);
@@ -1477,7 +1522,7 @@ function ReportRow({
   );
 }
 
-function AccountSettings() {
+export function AccountSettings() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
@@ -1564,7 +1609,7 @@ function Stat({
   );
 }
 
-function Analytics() {
+export function Analytics() {
   const { data } = useQuery({
     queryKey: ["analytics"],
     queryFn: async () => {
@@ -1670,7 +1715,7 @@ function Analytics() {
   );
 }
 
-function GalleryManager() {
+export function GalleryManager() {
   const qc = useQueryClient();
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -2015,7 +2060,7 @@ function GalleryManager() {
   );
 }
 
-function Inquiries() {
+export function Inquiries() {
   const { data } = useQuery({
     queryKey: ["inquiries"],
     queryFn: async () =>
@@ -2060,6 +2105,74 @@ function Inquiries() {
             )}
           </div>
         ))}
+      </div>
+    </section>
+  );
+}
+
+export function AdminLogs() {
+  const { data: views = [], isLoading } = useQuery({
+    queryKey: ["admin-activity-log"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("page_views")
+        .select("created_at, path, referrer, language")
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  return (
+    <section>
+      <div className="mb-6">
+        <p className="eyebrow">Observability</p>
+        <h2 className="mt-1 text-2xl font-light">Recent visitor activity</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Latest public page-view events recorded by the website. Authentication
+          and security-report events are managed in their respective sections.
+        </p>
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-lg shadow-black/10">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[46rem] text-left text-sm">
+            <thead className="bg-background text-xs uppercase tracking-wider text-muted-foreground">
+              <tr>
+                <th className="p-4">Time</th>
+                <th className="p-4">Page</th>
+                <th className="p-4">Language</th>
+                <th className="p-4">Referrer</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {views.map((view, index) => (
+                <tr key={`${view.created_at}-${index}`}>
+                  <td className="p-4 text-muted-foreground">
+                    {new Date(view.created_at).toLocaleString()}
+                  </td>
+                  <td className="p-4 font-mono text-xs text-primary">
+                    {view.path}
+                  </td>
+                  <td className="p-4">{view.language || "Unknown"}</td>
+                  <td className="max-w-xs truncate p-4 text-muted-foreground">
+                    {view.referrer || "Direct"}
+                  </td>
+                </tr>
+              ))}
+              {!isLoading && views.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={4}
+                    className="p-8 text-center text-muted-foreground"
+                  >
+                    No activity has been recorded yet.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
   );
