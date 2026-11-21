@@ -1595,16 +1595,38 @@ function Stat({
   icon: I,
   label,
   value,
+  change,
+  tone,
 }: {
   icon: typeof Eye;
   label: string;
   value: number | string;
+  change: string;
+  tone: "gold" | "amber" | "orange";
 }) {
+  const glow = {
+    gold: "from-[#f5d77d]/25 via-[#c8913f]/10",
+    amber: "from-[#f2bd5b]/24 via-[#b86f32]/10",
+    orange: "from-[#ed9b52]/22 via-[#a8552d]/10",
+  }[tone];
+
   return (
-    <div className="rounded-2xl border border-border bg-card p-6 shadow-lg shadow-black/10">
-      <I className="h-5 w-5 text-primary" />
-      <p className="mt-4 text-3xl font-light">{value}</p>
-      <p className="eyebrow mt-1">{label}</p>
+    <div className="relative isolate overflow-hidden rounded-xl border border-[#d8b76c]/45 bg-[#171613] p-5 shadow-[0_16px_38px_-24px_rgba(232,185,87,0.85)]">
+      <div
+        className={`pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_18%_8%,var(--tw-gradient-stops),transparent_58%)] ${glow}`}
+      />
+      <div className="flex items-center gap-3">
+        <span className="grid h-8 w-8 place-items-center rounded-lg border border-[#f0c76d]/25 bg-[#d6aa55]/15 text-[#f3c968] shadow-[0_0_18px_rgba(239,190,85,0.22)]">
+          <I className="h-4 w-4" />
+        </span>
+        <p className="eyebrow text-[#f4e6c7]">{label}</p>
+      </div>
+      <div className="mt-6 flex items-end gap-2">
+        <p className="text-4xl font-light leading-none text-[#ffe1a1] [text-shadow:0_0_17px_rgba(238,182,78,0.42)]">
+          {value}
+        </p>
+        <span className="pb-1 text-xs text-[#d8ad68]">{change}</span>
+      </div>
     </div>
   );
 }
@@ -1640,6 +1662,18 @@ export function Analytics() {
     };
   });
   const max = Math.max(1, ...days.map((d) => d.n));
+  const recentViews = views.filter(
+    (v) => new Date(v.created_at).getTime() >= Date.now() - 14 * 864e5,
+  ).length;
+  const previousViews = views.filter((v) => {
+    const time = new Date(v.created_at).getTime();
+    return time >= Date.now() - 28 * 864e5 && time < Date.now() - 14 * 864e5;
+  }).length;
+  const change = (current: number, previous: number) => {
+    if (!previous) return current ? "New" : "—";
+    const percent = Math.round(((current - previous) / previous) * 100);
+    return `${percent >= 0 ? "+" : ""}${percent}%`;
+  };
   const langs = Object.entries(
     views.reduce<Record<string, number>>((a, v) => {
       const k = v.language || "unknown";
@@ -1650,14 +1684,27 @@ export function Analytics() {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 6);
 
+  const languageFlag = (language: string) => {
+    if (language.toLowerCase().includes("in")) return "🇮🇳";
+    if (language.toLowerCase().includes("gb")) return "🇬🇧";
+    if (language.toLowerCase().includes("us")) return "🇺🇸";
+    return "🌐";
+  };
+
   return (
-    <section>
-      <h2 className="mb-6 text-2xl font-light">
+    <section className="max-w-6xl">
+      <h2 className="mb-6 text-[1.65rem] font-light tracking-tight text-[#f5d696]">
         Analytics{" "}
-        <span className="text-sm text-muted-foreground">(last 30 days)</span>
+        <span className="text-base text-muted-foreground">(last 30 days)</span>
       </h2>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat icon={Eye} label="Page views" value={views.length} />
+        <Stat
+          icon={Eye}
+          label="Page views"
+          value={views.length}
+          change={change(recentViews, previousViews)}
+          tone="gold"
+        />
         <Stat
           icon={Users}
           label="Views today"
@@ -1665,50 +1712,89 @@ export function Analytics() {
             views.filter((v) => new Date(v.created_at).toDateString() === today)
               .length
           }
+          change={change(
+            views.filter((v) => new Date(v.created_at).toDateString() === today)
+              .length,
+            views.filter(
+              (v) =>
+                new Date(v.created_at).toDateString() ===
+                new Date(Date.now() - 864e5).toDateString(),
+            ).length,
+          )}
+          tone="gold"
         />
-        <Stat icon={Mail} label="Inquiries" value={data?.inq ?? 0} />
+        <Stat
+          icon={Mail}
+          label="Inquiries"
+          value={data?.inq ?? 0}
+          change="Total"
+          tone="amber"
+        />
         <Stat
           icon={ImageIcon}
           label="Uploaded photos"
           value={data?.imgs ?? 0}
+          change="Total"
+          tone="orange"
         />
       </div>
       <div className="mt-6 grid gap-4 lg:grid-cols-3">
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-lg shadow-black/10 lg:col-span-2">
-          <p className="eyebrow mb-4">Daily views (14 days)</p>
-          <div className="flex h-40 items-end gap-2">
+        <div className="rounded-xl border border-[#d8b76c]/35 bg-[#171613] p-5 shadow-[0_18px_42px_-28px_rgba(232,185,87,0.7)] lg:col-span-2">
+          <p className="eyebrow mb-4 text-[#f4d58d]">Daily views (14 days)</p>
+          <div className="grid h-40 grid-cols-14 grid-rows-4 overflow-hidden rounded-sm border border-white/15 bg-[linear-gradient(to_right,rgba(255,255,255,0.12)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.12)_1px,transparent_1px)] bg-[size:calc(100%/14)_25%] px-2 pt-2">
             {days.map((d) => (
               <div
                 key={d.label}
-                className="flex flex-1 flex-col items-center gap-1"
+                className="col-span-1 row-span-4 flex min-w-0 flex-col items-center justify-end gap-1"
               >
-                <span className="text-[10px] text-muted-foreground">
+                <span className="text-[10px] leading-none text-[#f6e0ac]">
                   {d.n || ""}
                 </span>
                 <div
-                  className="w-full rounded-t-full bg-gold"
-                  style={{ height: `${(d.n / max) * 100}%`, minHeight: 2 }}
+                  className="w-[62%] min-w-[5px] rounded-t-md border border-[#ffdf86]/35 bg-gradient-to-b from-[#ffda71] via-[#d69b40] to-[#8d4e23] shadow-[0_0_14px_rgba(244,187,73,0.55)]"
+                  style={{
+                    height: d.n ? `${Math.max((d.n / max) * 92, 9)}%` : 2,
+                  }}
                 />
-                <span className="text-[10px] text-muted-foreground">
-                  {d.label}
-                </span>
               </div>
             ))}
           </div>
+          <div className="mt-1 grid grid-cols-14 px-2 text-center text-[10px] text-muted-foreground">
+            {days.map((d) => (
+              <span key={d.label}>{d.label}</span>
+            ))}
+          </div>
         </div>
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-lg shadow-black/10">
-          <p className="eyebrow mb-4">Visitor languages</p>
-          <ul className="space-y-2 text-sm">
+        <div className="relative overflow-hidden rounded-xl border border-[#d8b76c]/35 bg-[#171613] p-5 shadow-[0_18px_42px_-28px_rgba(232,185,87,0.7)]">
+          <p className="eyebrow mb-4 text-[#f4d58d]">Visitor languages</p>
+          <ul className="space-y-3 text-sm">
             {langs.length === 0 && (
               <li className="text-muted-foreground">No data yet</li>
             )}
             {langs.map(([l, n]) => (
-              <li key={l} className="flex justify-between">
-                <span>{l}</span>
-                <span className="text-primary">{n}</span>
+              <li
+                key={l}
+                className="grid grid-cols-[auto_1fr_auto] items-center gap-2"
+              >
+                <span aria-hidden="true">{languageFlag(l)}</span>
+                <span className="flex items-center gap-2">
+                  <span className="w-10 text-[#eee4d4]">{l}</span>
+                  <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#3b3932]">
+                    <span
+                      className="block h-full rounded-full bg-gradient-to-r from-[#c99855] to-[#ffe381]"
+                      style={{
+                        width: `${Math.max(7, (n / Math.max(1, langs[0]?.[1] ?? 1)) * 100)}%`,
+                      }}
+                    />
+                  </span>
+                </span>
+                <span className="text-[#f0c66b]">{n}</span>
               </li>
             ))}
           </ul>
+          <span className="pointer-events-none absolute bottom-5 right-6 text-5xl leading-none text-white/35">
+            ✦
+          </span>
         </div>
       </div>
     </section>
