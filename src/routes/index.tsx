@@ -30,6 +30,7 @@ import {
   Github,
   Globe,
   Linkedin,
+  Link2,
 } from "lucide-react";
 import heroImage from "@/assets/hero.jpg";
 import candid from "@/assets/candid.jpg";
@@ -48,9 +49,10 @@ import { AdSlot } from "@/components/AdSlot";
 import { DroneShowcase } from "@/components/DroneShowcase";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import ArtistSection from "@/components/ui/artist-section";
-import { SITE } from "@/lib/site-config";
+import { SITE, siteUrl } from "@/lib/site-config";
 import {
   DEFAULT_SITE_SETTINGS,
+  safeHyperlink,
   siteSettingsFrom,
   type SiteSettings,
 } from "@/lib/site-settings";
@@ -71,10 +73,26 @@ export const Route = createFileRoute("/")({
       {
         property: "og:description",
         content:
-          "Luxury wedding photography, cinematic films and 4K drone videography.",
+          "Mumbai wedding photography, cinematic films and 4K drone videography for celebrations across India and destination weddings.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: siteUrl("/") },
+      { property: "og:image", content: siteUrl(heroImage) },
+      {
+        property: "og:image:alt",
+        content: "A cinematic SR Studio wedding celebration",
+      },
       { name: "twitter:card", content: "summary_large_image" },
+      {
+        name: "twitter:title",
+        content: "SR Studio | Cinematic Wedding Photography & Films",
+      },
+      {
+        name: "twitter:description",
+        content:
+          "Mumbai wedding photography, cinematic films and 4K drone videography.",
+      },
+      { name: "twitter:image", content: siteUrl(heroImage) },
       {
         name: "keywords",
         content:
@@ -82,28 +100,44 @@ export const Route = createFileRoute("/")({
       },
       { name: "robots", content: "index, follow" },
     ],
-    links: [{ rel: "canonical", href: "/" }],
+    links: [{ rel: "canonical", href: siteUrl("/") }],
     scripts: [
       {
         type: "application/ld+json",
         children: JSON.stringify({
           "@context": "https://schema.org",
-          "@type": "ProfessionalService",
+          "@type": "PhotographyBusiness",
           name: SITE.name,
           description:
-            "Cinematic wedding photography, films and 4K drone videography.",
+            "Mumbai wedding photography, cinematic films and 4K drone videography for celebrations across India and destination weddings.",
+          url: siteUrl("/"),
+          logo: siteUrl("/sr-studio-mark.svg"),
+          image: siteUrl(heroImage),
           email: SITE.email,
           telephone: SITE.phone,
+          priceRange: "₹₹",
+          currenciesAccepted: "INR",
           address: {
             "@type": "PostalAddress",
             addressLocality: "Mumbai",
             addressCountry: "IN",
           },
-          areaServed: "Worldwide",
-          aggregateRating: {
-            "@type": "AggregateRating",
-            ratingValue: "5",
-            reviewCount: "3",
+          areaServed: [
+            { "@type": "City", name: "Mumbai" },
+            { "@type": "Country", name: "India" },
+          ],
+          hasOfferCatalog: {
+            "@type": "OfferCatalog",
+            name: "Wedding visual storytelling services",
+            itemListElement: [
+              "Wedding Photography",
+              "Cinematic Videography",
+              "Drone & Aerial Videography",
+              "Pre-Wedding Photography",
+            ].map((name) => ({
+              "@type": "Offer",
+              itemOffered: { "@type": "Service", name },
+            })),
           },
         }),
       },
@@ -866,6 +900,18 @@ function Inquiry() {
 
 function Footer() {
   const { footer, brand } = useSiteSettings();
+  const socialLinks = footer.socialLinks
+    .map((link) => ({ ...link, href: safeHyperlink(link.url) }))
+    .filter((link): link is { label: string; url: string; href: string } =>
+      Boolean(link.href),
+    );
+  const socialIcon = (label: string) => {
+    const value = label.toLowerCase();
+    if (value.includes("instagram")) return Instagram;
+    if (value.includes("youtube")) return Youtube;
+    if (value.includes("facebook")) return Facebook;
+    return Link2;
+  };
   return (
     <footer className="section-mask bg-card">
       <div className="mx-auto max-w-7xl px-6 py-20 text-center">
@@ -873,22 +919,26 @@ function Footer() {
           {footer.headline}{" "}
           <span className="text-gold">{footer.highlight}</span> Together
         </p>
-        <div className="mt-10 flex justify-center gap-4">
-          {[
-            { i: Instagram, l: "Instagram" },
-            { i: Youtube, l: "YouTube" },
-            { i: Facebook, l: "Facebook" },
-          ].map(({ i: I, l }) => (
+        {socialLinks.length > 0 && (
+          <div className="mt-10 flex flex-wrap justify-center gap-4">
+          {socialLinks.map(({ label, href }) => {
+            const Icon = socialIcon(label);
+            const external = href.startsWith("http");
+            return (
             <a
-              key={l}
-              href="#"
-              aria-label={l}
+              key={`${label}-${href}`}
+              href={href}
+              {...(external ? { target: "_blank", rel: "noreferrer" } : {})}
+              aria-label={label}
+              title={label}
               className="flex h-11 w-11 items-center justify-center border border-border transition-colors hover:border-primary hover:text-primary"
             >
-              <I className="h-4 w-4" />
+              <Icon className="h-4 w-4" />
             </a>
-          ))}
-        </div>
+            );
+          })}
+          </div>
+        )}
         <div className="mt-10 flex flex-col items-center justify-center gap-4 text-sm text-muted-foreground md:flex-row md:gap-10">
           <span className="flex items-center gap-2">
             <Mail className="h-4 w-4 text-primary" /> {brand.email}

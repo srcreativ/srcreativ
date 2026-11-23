@@ -93,7 +93,7 @@ async function withUploadTimeout<T>(operation: Promise<T>): Promise<T> {
 }
 
 const ADMIN_NAV = [
-  ["Edit", "/admin/edit"],
+  ["Settings", "/admin/edit"],
   ["Gallery", "/admin/gallery"],
   ["Tracking", "/admin/track"],
   ["Logs", "/admin/log"],
@@ -447,6 +447,155 @@ export function SiteEditor() {
             without a redeploy.
           </p>
         </div>
+      </div>
+    </section>
+  );
+}
+
+export function SocialLinksEditor() {
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ["site-settings-social-links"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("site_settings")
+        .select("data")
+        .eq("id", "default")
+        .maybeSingle();
+      if (error) throw error;
+      return data?.data;
+    },
+    retry: false,
+  });
+  const [links, setLinks] = useState<{ label: string; url: string }[]>([]);
+  const [loaded, setLoaded] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (isLoading) return;
+    const next = siteSettingsFrom(data).footer.socialLinks;
+    const snapshot = JSON.stringify(next);
+    if (snapshot !== loaded) {
+      setLinks(next);
+      setLoaded(snapshot);
+    }
+  }, [data, isLoading, loaded]);
+
+  const update = (
+    index: number,
+    key: "label" | "url",
+    value: string,
+  ) =>
+    setLinks((current) =>
+      current.map((link, position) =>
+        position === index ? { ...link, [key]: value } : link,
+      ),
+    );
+
+  const save = async () => {
+    const cleaned = links
+      .map((link) => ({ label: link.label.trim(), url: link.url.trim() }))
+      .filter((link) => link.label || link.url);
+    if (cleaned.some((link) => !link.label || !safeHyperlink(link.url))) {
+      toast.error("Every link needs a label and a valid http(s), mailto, or tel URL.");
+      return;
+    }
+    const settings = siteSettingsFrom(data);
+    setSaving(true);
+    const { error } = await supabase.from("site_settings").upsert(
+      {
+        id: "default",
+        data: {
+          ...settings,
+          footer: { ...settings.footer, socialLinks: cleaned },
+        },
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "id" },
+    );
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    setLinks(cleaned);
+    setLoaded(JSON.stringify(cleaned));
+    qc.invalidateQueries({ queryKey: ["site-settings"] });
+    qc.invalidateQueries({ queryKey: ["site-settings-social-links"] });
+    qc.invalidateQueries({ queryKey: ["public-site-settings"] });
+    toast.success("Footer links published");
+  };
+
+  return (
+    <section className="rounded-3xl border border-primary/40 bg-card p-6 shadow-lg shadow-black/10">
+      <p className="eyebrow">Footer links</p>
+      <h2 className="mt-1 text-2xl font-light">Social & custom hyperlinks</h2>
+      <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+        Add, rename, remove, and publish the links shown in the public footer.
+        Use full URLs such as https://instagram.com/yourstudio.
+      </p>
+      <div className="mt-6 space-y-3">
+        {links.length === 0 && (
+          <p className="rounded-xl border border-dashed border-border px-4 py-5 text-sm text-muted-foreground">
+            No footer hyperlinks yet. Add one below.
+          </p>
+        )}
+        {links.map((link, index) => (
+          <div
+            key={`${link.label}-${index}`}
+            className="grid gap-3 rounded-xl border border-border bg-background p-3 sm:grid-cols-[0.45fr_1fr_auto]"
+          >
+            <label className="sr-only" htmlFor={`social-label-${index}`}>
+              Link label
+            </label>
+            <input
+              id={`social-label-${index}`}
+              value={link.label}
+              onChange={(event) => update(index, "label", event.target.value)}
+              placeholder="Instagram"
+              maxLength={50}
+              className="rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:border-primary"
+            />
+            <label className="sr-only" htmlFor={`social-url-${index}`}>
+              Link URL
+            </label>
+            <input
+              id={`social-url-${index}`}
+              value={link.url}
+              onChange={(event) => update(index, "url", event.target.value)}
+              placeholder="https://…"
+              inputMode="url"
+              maxLength={500}
+              className="rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:border-primary"
+            />
+            <button
+              type="button"
+              onClick={() =>
+                setLinks((current) =>
+                  current.filter((_, position) => position !== index),
+                )
+              }
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-destructive/50 px-3 py-2 text-xs text-destructive hover:bg-destructive hover:text-destructive-foreground"
+              aria-label={`Remove ${link.label || "link"}`}
+            >
+              <Trash2 className="h-4 w-4" /> Remove
+            </button>
+          </div>
+        ))}
+      </div>
+      <div className="mt-5 flex flex-wrap gap-3">
+        <button
+          type="button"
+          onClick={() => setLinks((current) => [...current, { label: "", url: "" }])}
+          className="inline-flex items-center gap-2 rounded-full border border-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-primary hover:bg-primary hover:text-primary-foreground"
+        >
+          <Plus className="h-4 w-4" /> Add hyperlink
+        </button>
+        <button
+          type="button"
+          disabled={saving}
+          onClick={save}
+          className="rounded-full bg-gold px-5 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-primary-foreground disabled:opacity-60"
+        >
+          {saving ? "Publishing…" : "Save footer links"}
+        </button>
       </div>
     </section>
   );

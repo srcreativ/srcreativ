@@ -42,6 +42,7 @@ export type SiteSettings = {
     instagram: string;
     youtube: string;
     facebook: string;
+    socialLinks: { label: string; url: string }[];
   };
   theme: {
     background: string;
@@ -150,6 +151,7 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
     instagram: "",
     youtube: "",
     facebook: "",
+    socialLinks: [],
   },
   theme: {
     background: "#211f1d",
@@ -193,7 +195,11 @@ export function siteSettingsFrom(value: unknown): SiteSettings {
     hero: { ...DEFAULT_SITE_SETTINGS.hero, ...source.hero },
     artist: { ...DEFAULT_SITE_SETTINGS.artist, ...source.artist },
     inquiry: { ...DEFAULT_SITE_SETTINGS.inquiry, ...source.inquiry },
-    footer: { ...DEFAULT_SITE_SETTINGS.footer, ...source.footer },
+    footer: {
+      ...DEFAULT_SITE_SETTINGS.footer,
+      ...source.footer,
+      socialLinks: normaliseSocialLinks(source.footer),
+    },
     theme: { ...DEFAULT_SITE_SETTINGS.theme, ...source.theme },
     media: {
       ...DEFAULT_SITE_SETTINGS.media,
@@ -214,4 +220,38 @@ export function siteSettingsFrom(value: unknown): SiteSettings {
       ? source.testimonials
       : DEFAULT_SITE_SETTINGS.testimonials,
   };
+}
+
+function normaliseSocialLinks(
+  footer: Partial<SiteSettings["footer"]> | undefined,
+): SiteSettings["footer"]["socialLinks"] {
+  if (Array.isArray(footer?.socialLinks)) {
+    return footer.socialLinks
+      .filter(
+        (link): link is { label: string; url: string } =>
+          Boolean(link) &&
+          typeof link.label === "string" &&
+          typeof link.url === "string",
+      )
+      .map((link) => ({ label: link.label.trim(), url: link.url.trim() }))
+      .filter((link) => link.label && link.url);
+  }
+  return [
+    ["Instagram", footer?.instagram],
+    ["YouTube", footer?.youtube],
+    ["Facebook", footer?.facebook],
+  ]
+    .filter(([, url]): url is string => typeof url === "string" && Boolean(url.trim()))
+    .map(([label, url]) => ({ label, url: url.trim() }));
+}
+
+export function safeHyperlink(value: string): string | undefined {
+  try {
+    const url = new URL(value.trim());
+    return ["https:", "http:", "mailto:", "tel:"].includes(url.protocol)
+      ? url.href
+      : undefined;
+  } catch {
+    return undefined;
+  }
 }
