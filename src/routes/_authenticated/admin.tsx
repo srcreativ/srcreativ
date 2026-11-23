@@ -32,6 +32,7 @@ import {
   Video,
   ChevronDown,
   FileText,
+  Settings,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
@@ -95,12 +96,12 @@ async function withUploadTimeout<T>(operation: Promise<T>): Promise<T> {
 }
 
 const ADMIN_NAV = [
-  { label: "Settings", to: "/admin/edit", icon: Pencil },
   { label: "Gallery", to: "/admin/gallery", icon: ImageIcon },
   { label: "Tracking", to: "/admin/track", icon: Eye },
   { label: "Logs", to: "/admin/log", icon: FileText },
   { label: "Security", to: "/admin/security", icon: ShieldAlert },
   { label: "VDP & HoF", to: "/admin/vdp", icon: LockKeyhole },
+  { label: "Settings", to: "/admin/edit", icon: Settings },
 ] as const;
 
 function Admin() {
@@ -135,7 +136,6 @@ function Admin() {
                 <Link
                   key={to}
                   to={to}
-                  title={label}
                   aria-label={label}
                   activeProps={{
                     className:
