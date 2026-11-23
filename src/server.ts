@@ -2,6 +2,7 @@ import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
+import { SITE } from "./lib/site-config";
 
 type ServerEntry = {
   fetch: (
@@ -16,6 +17,57 @@ type TelemetryPayload = {
   path?: unknown;
   detail?: unknown;
 };
+
+function seoResponse(request: Request): Response | undefined {
+  const url = new URL(request.url);
+  const origin = url.origin;
+  if (url.pathname === "/robots.txt") {
+    return new Response(
+      `User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /auth\n\nSitemap: ${origin}/sitemap.xml\n`,
+      {
+        headers: {
+          "content-type": "text/plain; charset=utf-8",
+          "cache-control": "public, max-age=3600",
+        },
+      },
+    );
+  }
+  if (url.pathname === "/sitemap.xml") {
+    const lastModified = new Date().toISOString().slice(0, 10);
+    const urls = [
+      { path: "/", priority: "1.0", changefreq: "weekly" },
+      {
+        path: "/vulnerability-disclosure",
+        priority: "0.4",
+        changefreq: "monthly",
+      },
+    ];
+    const entries = urls
+      .map(
+        ({ path, priority, changefreq }) => `  <url>\n    <loc>${origin}${path}</loc>\n    <lastmod>${lastModified}</lastmod>\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`)
+      .join("\n");
+    return new Response(
+      `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries}\n</urlset>\n`,
+      {
+        headers: {
+          "content-type": "application/xml; charset=utf-8",
+          "cache-control": "public, max-age=3600",
+        },
+      },
+    );
+  }
+  if (url.pathname === "/.well-known/security.txt") {
+    return new Response(
+      `Contact: mailto:${SITE.email}\nPolicy: ${origin}/vulnerability-disclosure\nPreferred-Languages: en\n`,
+      {
+        headers: {
+          "content-type": "text/plain; charset=utf-8",
+          "cache-control": "public, max-age=3600",
+        },
+      },
+    );
+  }
+}
 
 async function handleTelemetry(request: Request): Promise<Response> {
   if (request.method !== "POST") return new Response(null, { status: 405 });
@@ -94,6 +146,8 @@ function isH3SwallowedErrorBody(body: string): boolean {
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      const seo = seoResponse(request);
+      if (seo) return seo;
       if (new URL(request.url).pathname === "/api/telemetry") {
         return handleTelemetry(request);
       }

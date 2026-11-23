@@ -5,10 +5,14 @@
 export const SITE = {
   name: "SR Studio",
   adminName: "SR Studio Admin",
-  description: "Cinematic wedding photography, films and drone videography.",
+  description:
+    "Mumbai wedding photography, cinematic films and drone videography for celebrations across India and destination weddings.",
   email: "hello@srstudio.in",
   phone: "+918114350249",
   location: "Mumbai",
+  url:
+    import.meta.env["VITE_SITE_URL"]?.replace(/\/+$/, "") ??
+    "https://srcreativ.srcreativ92.workers.dev",
   workerName: "srcreativ",
   galleryCategories: [
     "Candid Moments",
@@ -17,5 +21,9 @@ export const SITE = {
     "Pre-Wedding",
   ],
 } as const;
+
+export function siteUrl(path = "/"): string {
+  return new URL(path, `${SITE.url}/`).toString();
+}
 
 export type GalleryCategory = (typeof SITE.galleryCategories)[number];

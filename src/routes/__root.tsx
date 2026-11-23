@@ -10,7 +10,7 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";
-import { SITE } from "@/lib/site-config";
+import { SITE, siteUrl } from "@/lib/site-config";
 
 import appCss from "../styles.css?url";
 import { startTelemetry } from "@/lib/telemetry";
@@ -81,6 +81,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       meta: [
         { charSet: "utf-8" },
         { name: "viewport", content: "width=device-width, initial-scale=1" },
+        { name: "theme-color", content: "#211f1d" },
         { title: `${SITE.name} | Wedding Photography & Films` },
         {
           name: "description",
@@ -88,6 +89,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
             "Cinematic wedding photography, films and drone videography by SR Studio.",
         },
         { property: "og:type", content: "website" },
+        { property: "og:site_name", content: SITE.name },
+        { property: "og:locale", content: "en_IN" },
+        { property: "og:image", content: siteUrl("/controller.png") },
+        {
+          property: "og:image:alt",
+          content: "SR Studio wedding film controller and cinematic production setup",
+        },
         { name: "twitter:card", content: "summary_large_image" },
       ],
       links: [
