@@ -9,8 +9,8 @@ For approved work:
 2. Keep secrets out of commits; use `.env.example` for variable names only.
 3. Run `npm run build` and `npm test` before opening a pull request.
 4. Describe visual, database, environment, and deployment changes in the PR.
-5. Never force-push, rebase, amend, or squash commits already synced to
-   Lovable.
+5. Never force-push, rebase, amend, or squash commits already shared with the
+   team.
 
 Report security issues through [SECURITY.md](./SECURITY.md), never through a
 public issue or pull request.

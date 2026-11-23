@@ -1,6 +1,6 @@
 # Complete Self-Hosting Guide for SR Studio
 
-## How to Host Without Lovable Publish
+## Independent Hosting
 
 This project is built on open standards and modern web technologies:
 
@@ -9,7 +9,7 @@ This project is built on open standards and modern web technologies:
 - **Database, Auth & Storage:** [Supabase](https://supabase.com)
 - **Styling:** [Tailwind CSS v4](https://tailwindcss.com)
 
-You do **not** need Lovable to build, deploy, or run this application. You can host it completely independently on:
+You can build, deploy, and run this application independently on:
 
 1. **Cloudflare Workers / Pages** (Fastest & Native Default)
 2. **Vercel**
