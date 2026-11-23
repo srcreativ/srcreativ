@@ -31,6 +31,7 @@ import {
   ImagePlus,
   Video,
   ChevronDown,
+  FileText,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
@@ -94,12 +95,12 @@ async function withUploadTimeout<T>(operation: Promise<T>): Promise<T> {
 }
 
 const ADMIN_NAV = [
-  ["Settings", "/admin/edit"],
-  ["Gallery", "/admin/gallery"],
-  ["Tracking", "/admin/track"],
-  ["Logs", "/admin/log"],
-  ["Security", "/admin/security"],
-  ["VDP & HoF", "/admin/vdp"],
+  { label: "Settings", to: "/admin/edit", icon: Pencil },
+  { label: "Gallery", to: "/admin/gallery", icon: ImageIcon },
+  { label: "Tracking", to: "/admin/track", icon: Eye },
+  { label: "Logs", to: "/admin/log", icon: FileText },
+  { label: "Security", to: "/admin/security", icon: ShieldAlert },
+  { label: "VDP & HoF", to: "/admin/vdp", icon: LockKeyhole },
 ] as const;
 
 function Admin() {
@@ -123,30 +124,32 @@ function Admin() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="border-b border-border bg-background/95 backdrop-blur">
-        <div className="mx-auto flex min-h-16 max-w-7xl flex-wrap items-center justify-between gap-3 px-6 py-3">
+        <div className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-3 px-6 py-3">
           <Link to="/" className="font-semibold tracking-[0.25em]">
             {SITE.name.toUpperCase()}{" "}
             <span className="text-primary">ADMIN</span>
           </Link>
-          <nav
-            aria-label="Admin navigation"
-            className="order-3 flex w-full gap-1 overflow-x-auto pb-1 sm:order-2 sm:w-auto sm:pb-0"
-          >
-            {ADMIN_NAV.map(([label, to]) => (
-              <Link
-                key={to}
-                to={to}
-                activeProps={{
-                  className:
-                    "border-primary/60 bg-primary/15 text-primary hover:text-primary",
-                }}
-                className="whitespace-nowrap rounded-full border border-transparent px-3 py-2 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
-              >
-                {label}
-              </Link>
-            ))}
-          </nav>
-          <div className="order-2 sm:order-3">
+          <div className="flex items-center gap-1 sm:gap-2">
+            <nav aria-label="Admin navigation" className="flex items-center gap-1">
+              {ADMIN_NAV.map(({ label, to, icon: Icon }) => (
+                <Link
+                  key={to}
+                  to={to}
+                  title={label}
+                  aria-label={label}
+                  activeProps={{
+                    className:
+                      "border-primary/60 bg-primary/15 text-primary hover:text-primary",
+                  }}
+                  className="group relative inline-flex size-9 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary focus-visible:border-primary/60 focus-visible:bg-primary/15 focus-visible:text-primary"
+                >
+                  <Icon aria-hidden="true" className="size-4" />
+                  <span className="pointer-events-none absolute right-0 top-full z-50 mt-2 hidden whitespace-nowrap rounded-md border border-border bg-card px-2 py-1 text-[11px] font-medium text-foreground shadow-lg group-hover:block group-focus-visible:block">
+                    {label}
+                  </span>
+                </Link>
+              ))}
+            </nav>
             <button
               type="button"
               onClick={signOut}
@@ -557,7 +560,18 @@ export function SiteEditor() {
 }
 
 function SettingsGroup({ title, children }: { title: string; children: ReactNode }) {
-  return <details open className="rounded-2xl border border-border bg-card p-5"><summary className="cursor-pointer text-lg font-light">{title}</summary><div className="mt-5 grid gap-4 sm:grid-cols-2">{children}</div></details>;
+  return (
+    <details open className="group rounded-2xl border border-border bg-card p-5">
+      <summary className="flex cursor-pointer list-none items-center justify-between text-lg font-light [&::-webkit-details-marker]:hidden [&::marker]:content-none">
+        {title}
+        <ChevronDown
+          aria-hidden="true"
+          className="size-4 transition-transform group-open:rotate-180"
+        />
+      </summary>
+      <div className="mt-5 grid gap-4 sm:grid-cols-2">{children}</div>
+    </details>
+  );
 }
 
 function SettingsInput({ label, value, onChange, textarea = false, type = "text" }: { label: string; value: string; onChange: (value: string) => void; textarea?: boolean; type?: string }) {
