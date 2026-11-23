@@ -5,7 +5,7 @@ import {
   useNavigate,
 } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import {
   Trash2,
@@ -30,6 +30,7 @@ import {
   RotateCcw,
   ImagePlus,
   Video,
+  ChevronDown,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
@@ -203,6 +204,7 @@ function MobileAdminTools() {
       ? "unsupported"
       : Notification.permission,
   );
+  const [open, setOpen] = useState(true);
 
   const enableNotifications = async () => {
     if (typeof Notification === "undefined") {
@@ -224,35 +226,48 @@ function MobileAdminTools() {
             <Smartphone className="h-5 w-5 text-primary" /> Manage SR Studio
             from Android
           </h2>
-          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+        </div>
+        <button
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          aria-expanded={open}
+          className="inline-flex items-center justify-center gap-2 rounded-full border border-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
+        >
+          {open ? "Hide app tools" : "Show app tools"}
+          <ChevronDown className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
+        </button>
+      </div>
+      {open && (
+        <div className="mt-5 border-t border-border pt-5">
+          <p className="max-w-2xl text-sm text-muted-foreground">
             Install this admin panel as an app to upload, edit, delete, and
             manage gallery work from your phone.
           </p>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <AppInstallPrompt />
+            <button
+              type="button"
+              onClick={enableNotifications}
+              disabled={permission === "granted" || permission === "unsupported"}
+              className="inline-flex items-center gap-2 rounded-full border border-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-primary transition-colors hover:bg-primary hover:text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {permission === "granted" ? (
+                <Check className="h-4 w-4" />
+              ) : (
+                <Bell className="h-4 w-4" />
+              )}
+              {permission === "granted"
+                ? "Alerts enabled"
+                : "Enable inquiry alerts"}
+            </button>
+          </div>
+          <p className="mt-4 text-xs text-muted-foreground">
+            Alerts appear while this installed app or admin page is open. Apply
+            migration <code>0002_enable_inquiry_realtime.sql</code> in Supabase to
+            activate real-time inquiry events.
+          </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <AppInstallPrompt />
-          <button
-            type="button"
-            onClick={enableNotifications}
-            disabled={permission === "granted" || permission === "unsupported"}
-            className="inline-flex items-center gap-2 rounded-full border border-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-primary transition-colors hover:bg-primary hover:text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {permission === "granted" ? (
-              <Check className="h-4 w-4" />
-            ) : (
-              <Bell className="h-4 w-4" />
-            )}
-            {permission === "granted"
-              ? "Alerts enabled"
-              : "Enable inquiry alerts"}
-          </button>
-        </div>
-      </div>
-      <p className="mt-4 text-xs text-muted-foreground">
-        Alerts appear while this installed app or admin page is open. Apply
-        migration <code>0002_enable_inquiry_realtime.sql</code> in Supabase to
-        activate real-time inquiry events.
-      </p>
+      )}
     </section>
   );
 }
@@ -311,40 +326,39 @@ export function SiteEditor() {
     },
     retry: false,
   });
-  const [draft, setDraft] = useState(() =>
-    JSON.stringify(DEFAULT_SITE_SETTINGS, null, 2),
-  );
+  const [draft, setDraft] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
   const [lastLoaded, setLastLoaded] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (isLoading) return;
-    const next = JSON.stringify(siteSettingsFrom(data), null, 2);
-    if (next !== lastLoaded) {
+    const next = siteSettingsFrom(data);
+    const snapshot = JSON.stringify(next);
+    if (snapshot !== lastLoaded) {
       setDraft(next);
-      setLastLoaded(next);
+      setLastLoaded(snapshot);
     }
   }, [data, isLoading, lastLoaded]);
 
-  let preview = DEFAULT_SITE_SETTINGS;
-  let parseError = "";
-  try {
-    preview = siteSettingsFrom(JSON.parse(draft));
-  } catch {
-    parseError =
-      "The blueprint must be valid JSON before it can be previewed or published.";
-  }
+  const updateGroup = <
+    Group extends "brand" | "hero" | "artist" | "inquiry" | "footer",
+    Key extends keyof SiteSettings[Group],
+  >(
+    group: Group,
+    key: Key,
+    value: SiteSettings[Group][Key],
+  ) =>
+    setDraft((current) => ({
+      ...current,
+      [group]: { ...current[group], [key]: value },
+    }));
 
   const save = async () => {
-    if (parseError) {
-      toast.error(parseError);
-      return;
-    }
     setSaving(true);
     const { error } = await supabase.from("site_settings").upsert(
       {
         id: "default",
-        data: JSON.parse(draft),
+        data: draft,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "id" },
@@ -354,22 +368,66 @@ export function SiteEditor() {
       toast.error(error.message);
       return;
     }
-    setLastLoaded(draft);
+    setLastLoaded(JSON.stringify(draft));
     qc.invalidateQueries({ queryKey: ["site-settings"] });
     qc.invalidateQueries({ queryKey: ["public-site-settings"] });
     toast.success("Website changes published");
   };
+
+  const restoreDefaults = async () => {
+    try {
+      const response = await fetch("/default-site-settings.json", {
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error("Default settings file is unavailable");
+      setDraft(siteSettingsFrom(await response.json()));
+      toast.success("Default settings loaded. Save & publish to apply them.");
+    } catch (error) {
+      toast.error((error as Error).message);
+    }
+  };
+
+  const updateService = (
+    index: number,
+    key: "title" | "description" | "points",
+    value: string,
+  ) =>
+    setDraft((current) => ({
+      ...current,
+      services: current.services.map((service, position) =>
+        position === index
+          ? {
+              ...service,
+              [key]:
+                key === "points"
+                  ? value.split("\n").map((item) => item.trim()).filter(Boolean)
+                  : value,
+            }
+          : service,
+      ),
+    }));
+
+  const updateTestimonial = (
+    index: number,
+    key: "name" | "place" | "text",
+    value: string,
+  ) =>
+    setDraft((current) => ({
+      ...current,
+      testimonials: current.testimonials.map((item, position) =>
+        position === index ? { ...item, [key]: value } : item,
+      ),
+    }));
 
   return (
     <section className="rounded-3xl border border-primary/40 bg-card p-6 shadow-lg shadow-black/10">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
         <div>
           <p className="eyebrow">Reusable website editor</p>
-          <h2 className="mt-1 text-2xl font-light">Client site blueprint</h2>
+          <h2 className="mt-1 text-2xl font-light">Client website settings</h2>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Edit all client-facing copy, business details, services,
-            testimonials, artist profile, calls to action, and social links in
-            one profile.
+            Edit your website using simple fields. Changes appear in the preview
+            immediately and publish when you save.
           </p>
         </div>
         <a
@@ -382,35 +440,81 @@ export function SiteEditor() {
         </a>
       </div>
       <div className="mt-6 grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <div>
-          <label className="mb-2 block text-sm">Website blueprint (JSON)</label>
-          <textarea
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            spellCheck={false}
-            className="h-[34rem] w-full rounded-2xl border border-input bg-background p-4 font-mono text-xs leading-5 outline-none focus:border-primary"
-            aria-label="Website blueprint JSON"
-          />
-          {parseError && (
-            <p className="mt-2 text-sm text-destructive">{parseError}</p>
-          )}
+        <div className="space-y-5">
+          <SettingsGroup title="Brand & contact details">
+            <SettingsInput label="Business name" value={draft.brand.name} onChange={(value) => updateGroup("brand", "name", value)} />
+            <SettingsInput label="Short description" value={draft.brand.description} onChange={(value) => updateGroup("brand", "description", value)} textarea />
+            <SettingsInput label="Email" value={draft.brand.email} onChange={(value) => updateGroup("brand", "email", value)} type="email" />
+            <SettingsInput label="Phone" value={draft.brand.phone} onChange={(value) => updateGroup("brand", "phone", value)} type="tel" />
+            <SettingsInput label="Base city" value={draft.brand.location} onChange={(value) => updateGroup("brand", "location", value)} />
+          </SettingsGroup>
+          <SettingsGroup title="Hero section">
+            <SettingsInput label="Small heading" value={draft.hero.eyebrow} onChange={(value) => updateGroup("hero", "eyebrow", value)} />
+            <SettingsInput label="Main heading" value={draft.hero.title} onChange={(value) => updateGroup("hero", "title", value)} />
+            <SettingsInput label="Gold highlighted words" value={draft.hero.highlight} onChange={(value) => updateGroup("hero", "highlight", value)} />
+            <SettingsInput label="Introduction" value={draft.hero.subtitle} onChange={(value) => updateGroup("hero", "subtitle", value)} textarea />
+            <SettingsInput label="Portfolio button" value={draft.hero.primaryCta} onChange={(value) => updateGroup("hero", "primaryCta", value)} />
+            <SettingsInput label="Inquiry button" value={draft.hero.secondaryCta} onChange={(value) => updateGroup("hero", "secondaryCta", value)} />
+          </SettingsGroup>
+          <SettingsGroup title="Artist profile">
+            <SettingsInput label="Section label" value={draft.artist.label} onChange={(value) => updateGroup("artist", "label", value)} />
+            <SettingsInput label="Main title" value={draft.artist.title} onChange={(value) => updateGroup("artist", "title", value)} />
+            <SettingsInput label="Gold highlighted words" value={draft.artist.highlight} onChange={(value) => updateGroup("artist", "highlight", value)} />
+            <SettingsInput label="Achievement number" value={draft.artist.metric} onChange={(value) => updateGroup("artist", "metric", value)} />
+            <SettingsInput label="Achievement description" value={draft.artist.metricLabel} onChange={(value) => updateGroup("artist", "metricLabel", value)} />
+            {draft.artist.paragraphs.map((paragraph, index) => (
+              <SettingsInput key={index} label={`Profile paragraph ${index + 1}`} value={paragraph} onChange={(value) => setDraft((current) => ({ ...current, artist: { ...current.artist, paragraphs: current.artist.paragraphs.map((item, position) => position === index ? value : item) } }))} textarea />
+            ))}
+          </SettingsGroup>
+          <SettingsGroup title="Services">
+            {draft.services.map((service, index) => (
+              <div key={`${service.title}-${index}`} className="space-y-3 rounded-xl border border-border bg-background p-4">
+                <div className="flex items-center justify-between gap-3"><p className="text-sm font-medium">Service {index + 1}</p><button type="button" onClick={() => setDraft((current) => ({ ...current, services: current.services.filter((_, position) => position !== index) }))} className="text-xs text-destructive hover:underline">Remove</button></div>
+                <SettingsInput label="Service name" value={service.title} onChange={(value) => updateService(index, "title", value)} />
+                <SettingsInput label="Description" value={service.description} onChange={(value) => updateService(index, "description", value)} textarea />
+                <SettingsInput label="Included items (one per line)" value={service.points.join("\n")} onChange={(value) => updateService(index, "points", value)} textarea />
+              </div>
+            ))}
+            <button type="button" onClick={() => setDraft((current) => ({ ...current, services: [...current.services, { title: "New service", description: "", points: [] }] }))} className="inline-flex items-center gap-2 text-sm text-primary hover:underline"><Plus className="h-4 w-4" /> Add service</button>
+          </SettingsGroup>
+          <SettingsGroup title="Client testimonials">
+            {draft.testimonials.map((item, index) => (
+              <div key={`${item.name}-${index}`} className="space-y-3 rounded-xl border border-border bg-background p-4">
+                <div className="flex items-center justify-between gap-3"><p className="text-sm font-medium">Testimonial {index + 1}</p><button type="button" onClick={() => setDraft((current) => ({ ...current, testimonials: current.testimonials.filter((_, position) => position !== index) }))} className="text-xs text-destructive hover:underline">Remove</button></div>
+                <SettingsInput label="Couple or client name" value={item.name} onChange={(value) => updateTestimonial(index, "name", value)} />
+                <SettingsInput label="City" value={item.place} onChange={(value) => updateTestimonial(index, "place", value)} />
+                <SettingsInput label="Review" value={item.text} onChange={(value) => updateTestimonial(index, "text", value)} textarea />
+              </div>
+            ))}
+            <button type="button" onClick={() => setDraft((current) => ({ ...current, testimonials: [...current.testimonials, { name: "New client", place: "", text: "" }] }))} className="inline-flex items-center gap-2 text-sm text-primary hover:underline"><Plus className="h-4 w-4" /> Add testimonial</button>
+          </SettingsGroup>
+          <SettingsGroup title="Inquiry & footer">
+            <SettingsInput label="Inquiry small heading" value={draft.inquiry.eyebrow} onChange={(value) => updateGroup("inquiry", "eyebrow", value)} />
+            <SettingsInput label="Inquiry title" value={draft.inquiry.title} onChange={(value) => updateGroup("inquiry", "title", value)} />
+            <SettingsInput label="Inquiry highlighted words" value={draft.inquiry.highlight} onChange={(value) => updateGroup("inquiry", "highlight", value)} />
+            <SettingsInput label="Inquiry description" value={draft.inquiry.description} onChange={(value) => updateGroup("inquiry", "description", value)} textarea />
+            <SettingsInput label="Location field label" value={draft.inquiry.locationLabel} onChange={(value) => updateGroup("inquiry", "locationLabel", value)} />
+            <SettingsInput label="Submit button" value={draft.inquiry.submitLabel} onChange={(value) => updateGroup("inquiry", "submitLabel", value)} />
+            <SettingsInput label="Footer heading" value={draft.footer.headline} onChange={(value) => updateGroup("footer", "headline", value)} />
+            <SettingsInput label="Footer highlighted words" value={draft.footer.highlight} onChange={(value) => updateGroup("footer", "highlight", value)} />
+            <SettingsInput label="Footer availability message" value={draft.footer.availability} onChange={(value) => updateGroup("footer", "availability", value)} />
+            <SettingsInput label="Copyright name" value={draft.footer.copyrightName} onChange={(value) => updateGroup("footer", "copyrightName", value)} />
+          </SettingsGroup>
           <div className="mt-4 flex flex-wrap gap-3">
             <button
               type="button"
               onClick={save}
-              disabled={saving || Boolean(parseError)}
+              disabled={saving}
               className="rounded-full bg-gold px-6 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-primary-foreground disabled:opacity-60"
             >
               {saving ? "Publishing…" : "Publish website changes"}
             </button>
             <button
               type="button"
-              onClick={() =>
-                setDraft(JSON.stringify(DEFAULT_SITE_SETTINGS, null, 2))
-              }
+              onClick={restoreDefaults}
               className="rounded-full border border-border px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground hover:text-primary"
             >
-              Restore template defaults
+              Restore default settings
             </button>
           </div>
         </div>
@@ -419,27 +523,27 @@ export function SiteEditor() {
           <div className="mt-4 overflow-hidden rounded-xl border border-primary/40 bg-card">
             <div className="flex items-center justify-between border-b border-border px-4 py-3 text-xs">
               <span className="tracking-[0.2em]">
-                {preview.brand.name.toUpperCase()}
+              {draft.brand.name.toUpperCase()}
               </span>
               <span className="text-primary">MENU</span>
             </div>
             <div className="bg-gradient-to-br from-card via-background to-secondary p-6">
-              <p className="eyebrow">{preview.hero.eyebrow}</p>
+              <p className="eyebrow">{draft.hero.eyebrow}</p>
               <h3 className="mt-4 text-3xl font-light leading-tight">
-                {preview.hero.title}{" "}
-                <i className="font-serif text-gold">{preview.hero.highlight}</i>
+                {draft.hero.title}{" "}
+                <i className="font-serif text-gold">{draft.hero.highlight}</i>
               </h3>
               <p className="mt-4 text-sm text-muted-foreground">
-                {preview.hero.subtitle}
+                {draft.hero.subtitle}
               </p>
               <button className="mt-5 rounded-full border border-primary px-4 py-2 text-xs text-primary">
-                {preview.hero.primaryCta}
+                {draft.hero.primaryCta}
               </button>
             </div>
             <div className="border-t border-border p-4 text-xs text-muted-foreground">
-              {preview.brand.email} · {preview.brand.phone}
+              {draft.brand.email} · {draft.brand.phone}
               <br />
-              {preview.brand.location}
+              {draft.brand.location}
             </div>
           </div>
           <p className="mt-4 text-xs text-muted-foreground">
@@ -450,6 +554,14 @@ export function SiteEditor() {
       </div>
     </section>
   );
+}
+
+function SettingsGroup({ title, children }: { title: string; children: ReactNode }) {
+  return <details open className="rounded-2xl border border-border bg-card p-5"><summary className="cursor-pointer text-lg font-light">{title}</summary><div className="mt-5 grid gap-4 sm:grid-cols-2">{children}</div></details>;
+}
+
+function SettingsInput({ label, value, onChange, textarea = false, type = "text" }: { label: string; value: string; onChange: (value: string) => void; textarea?: boolean; type?: string }) {
+  return <label className={`block text-sm ${textarea ? "sm:col-span-2" : ""}`}><span className="mb-2 block text-foreground">{label}</span>{textarea ? <textarea value={value} onChange={(event) => onChange(event.target.value)} rows={4} className="w-full resize-y rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none focus:border-primary" /> : <input type={type} value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none focus:border-primary" />}</label>;
 }
 
 export function SocialLinksEditor() {

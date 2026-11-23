@@ -1,0 +1,99 @@
+{
+  "brand": {
+    "name": "SR Studio",
+    "description": "Mumbai wedding photography, cinematic films and drone videography for celebrations across India and destination weddings.",
+    "email": "hello@srstudio.in",
+    "phone": "+918114350249",
+    "location": "Mumbai"
+  },
+  "hero": {
+    "eyebrow": "Wedding Photography · Films · Aerials",
+    "title": "Capturing Your Forever,",
+    "highlight": "Frame by Frame",
+    "subtitle": "Timeless wedding cinematography and breathtaking drone videography for couples who want their story told like cinema.",
+    "primaryCta": "View Portfolio",
+    "secondaryCta": "Inquire Now"
+  },
+  "artist": {
+    "label": "The Artist",
+    "metric": "400+",
+    "metricLabel": "Weddings filmed",
+    "title": "Every love story",
+    "highlight": "deserves cinema",
+    "paragraphs": [
+      "SR Studio began with a single camera and a belief: the quiet glances and unplanned laughter matter as much as the grand moments.",
+      "Today our team blends documentary storytelling with cinema-grade cameras, prime lenses and licensed drones, while our approach remains deeply personal. We get to know every couple before the day, so we can capture who you truly are."
+    ]
+  },
+  "services": [
+    {
+      "title": "Wedding Photography",
+      "description": "Full-day coverage from getting ready to the final farewell, with meticulous high-resolution editing.",
+      "points": ["Full-day coverage", "High-res edited gallery", "Heirloom album"]
+    },
+    {
+      "title": "Cinematic Videography",
+      "description": "Films that feel like cinema: emotional, intimate and beautifully graded.",
+      "points": ["Highlight reels", "Full feature films", "Teaser trailers"]
+    },
+    {
+      "title": "Drone & Aerial",
+      "description": "Breathtaking 4K aerial perspectives of your venue, procession and celebrations.",
+      "points": ["4K aerial footage", "Venue overviews", "Licensed pilots"]
+    }
+  ],
+  "testimonials": [
+    {
+      "name": "Ananya & Rohan",
+      "place": "Udaipur",
+      "text": "They were everywhere and nowhere at once. Our film made every single guest cry. It's the most precious thing we own."
+    },
+    {
+      "name": "Priya & Karan",
+      "place": "Goa",
+      "text": "Punctual, calm and incredibly professional. The drone shots of our beach mandap still give us chills."
+    },
+    {
+      "name": "Meera & Arjun",
+      "place": "Jaipur",
+      "text": "Delivered before the promised date and beyond anything we imagined. Every frame feels like art."
+    }
+  ],
+  "inquiry": {
+    "eyebrow": "Inquire",
+    "title": "Let's plan your",
+    "highlight": "story",
+    "description": "Share a few details about your wedding and we will craft a tailored proposal, with availability for your date.",
+    "locationLabel": "Event location",
+    "submitLabel": "Send Inquiry"
+  },
+  "footer": {
+    "headline": "Let's Create",
+    "highlight": "Magic",
+    "availability": "Available worldwide for destination weddings",
+    "copyrightName": "SR Studio",
+    "instagram": "",
+    "youtube": "",
+    "facebook": "",
+    "socialLinks": []
+  },
+  "theme": {
+    "background": "#211f1d",
+    "foreground": "#f4efe8",
+    "primary": "#dfb970",
+    "card": "#292624",
+    "radius": 4,
+    "headingScale": 1,
+    "sectionOrder": ["hero", "portfolio", "drone", "ad", "artist-profile", "services", "about", "testimonials", "inquiry"]
+  },
+  "media": {
+    "titleIcon": "/sr-studio-mark.svg",
+    "heroVideo": "/videos/indian-wedding.mp4",
+    "heroPoster": "",
+    "artistPortrait": "",
+    "artistNote": "",
+    "controllerImage": "/controller.png",
+    "droneVideo": "/drone_optimized.mp4",
+    "gallery": {}
+  }
+}
