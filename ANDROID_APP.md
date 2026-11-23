@@ -1,35 +1,36 @@
-# SR Studio Admin for Android
+# SR Studio Android app
 
-The Android application is a secure native wrapper around the live SR Studio
-admin panel. It uses the same account, gallery, inquiries, and Supabase data as
-the website, so there is only one place to manage the studio.
+The Android app is a lightweight Capacitor shell for the live SR Studio admin website. It deliberately does not package the website's videos and gallery assets; the app loads the current Cloudflare Worker instead.
 
-## Install
-
-1. Open the repository's **Releases** page on an Android phone.
-2. Download `sr-studio-admin.apk` from the newest Android release.
-3. Allow installs from the browser or file manager when Android asks.
-4. Open **SR Studio Admin** and sign in at `/auth`.
-
-The app requires an internet connection because it loads the current protected
-site from Cloudflare. Updates to the website are immediately reflected in the
-app; a new APK is needed only when the Android wrapper itself changes.
-
-## Publish an APK release
-
-Push a tag that begins with `android-v`, for example:
+## Build commands
 
 ```bash
-git tag android-v1.0.0
-git push origin android-v1.0.0
+npm run android:debug
+npm run android:release
 ```
 
-GitHub Actions builds the debug APK with Java 21 and adds it to the matching
-GitHub Release. No Supabase keys, passwords, or signing keys are stored in the
-repository.
+`android:prepare` syncs Capacitor, then removes the copied media bundle while keeping the small native bridge and offline connection shell. This reduces the APK substantially compared with bundling the entire website.
 
-## Production note
+## Production signing
 
-The GitHub Release APK is suitable for direct client installation. Play Store
-distribution requires a separately generated, private signing key and a signed
-release App Bundle; never commit that signing key to this repository.
+Create an Android signing key once and keep it safely offline:
+
+```bash
+keytool -genkeypair -v -keystore android/release-keystore.jks -alias sr-studio -keyalg RSA -keysize 4096 -validity 10000
+cp android/keystore.properties.example android/keystore.properties
+```
+
+Fill `android/keystore.properties` with the key details, then run `npm run android:release`. Do not commit the `.jks` file or real properties file.
+
+For GitHub Releases, add these GitHub repository secrets:
+
+- `ANDROID_KEYSTORE_BASE64` — base64 of the `.jks` file
+- `ANDROID_KEYSTORE_PASSWORD`
+- `ANDROID_KEY_ALIAS`
+- `ANDROID_KEY_PASSWORD`
+
+Tag a release as `android-v1.1.0` (then increase `versionCode` and `versionName` for every future update). The workflow builds a signed release APK and publishes it to GitHub Releases.
+
+## In-app updater
+
+On app startup, the native updater checks the latest GitHub release at `srcreativ/srcreativ`. When it finds a newer `android-vX.Y.Z` tag with an APK asset, it prompts for download, requests Android's required “Install unknown apps” permission when needed, then invokes the system package installer. GitHub Releases must contain the signed `.apk` asset.

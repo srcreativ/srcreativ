@@ -33,6 +33,7 @@ import {
   ChevronDown,
   FileText,
   Settings,
+  House,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
@@ -96,6 +97,7 @@ async function withUploadTimeout<T>(operation: Promise<T>): Promise<T> {
 }
 
 const ADMIN_NAV = [
+  { label: "Home", to: "/admin", icon: House },
   { label: "Gallery", to: "/admin/gallery", icon: ImageIcon },
   { label: "Tracking", to: "/admin/track", icon: Eye },
   { label: "Logs", to: "/admin/log", icon: FileText },

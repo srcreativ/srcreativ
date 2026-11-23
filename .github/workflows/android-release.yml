@@ -23,18 +23,27 @@ jobs:
           distribution: temurin
           java-version: "21"
       - run: npm ci
-      - run: npm run build
-      - run: npx cap sync android
+      - name: Prepare minimal Android web shell
+        run: npm run android:prepare
+      - name: Restore signing keystore
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/release-keystore.jks
+          cat > android/keystore.properties <<'EOF'
+          storeFile=release-keystore.jks
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          EOF
       - run: chmod +x android/gradlew
-      - run: ./gradlew assembleDebug --no-daemon --console=plain
+      - run: ./gradlew assembleRelease --no-daemon --console=plain
         working-directory: android
       - uses: actions/upload-artifact@v4
         with:
           name: sr-studio-admin-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: android/app/build/outputs/apk/release/app-release.apk
       - run: >-
           gh release create "$GITHUB_REF_NAME"
-          android/app/build/outputs/apk/debug/app-debug.apk#sr-studio-admin.apk
+          android/app/build/outputs/apk/release/app-release.apk#sr-studio-admin.apk
           --title "SR Studio Admin ${GITHUB_REF_NAME#android-v}"
           --generate-notes
         env:
