@@ -15,7 +15,7 @@ export const Route = createFileRoute("/_authenticated/admin/track")({
 });
 
 function TrackingPage() {
-  const { data: events = [] } = useQuery({
+  const { data = { events: [], views: 0, inquiries: 0 } } = useQuery({
     queryKey: ["visitor-event-stream"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -24,19 +24,27 @@ function TrackingPage() {
         .order("created_at", { ascending: false })
         .limit(12);
       if (error) throw error;
-      return data ?? [];
+      const since = new Date(Date.now() - 30 * 864e5).toISOString();
+      const [{ count: views, error: viewsError }, { count: inquiries, error: inquiriesError }] =
+        await Promise.all([
+          supabase
+            .from("page_views")
+            .select("*", { count: "exact", head: true })
+            .gte("created_at", since),
+          supabase
+            .from("inquiries")
+            .select("*", { count: "exact", head: true })
+            .gte("created_at", since),
+        ]);
+      if (viewsError || inquiriesError)
+        throw viewsError ?? inquiriesError;
+      return { events: data ?? [], views: views ?? 0, inquiries: inquiries ?? 0 };
     },
     refetchInterval: 30_000,
   });
-  const mobile = events.filter((event) =>
-    /android|ios|mobile/i.test(event.referrer ?? ""),
-  ).length;
-  const conversion = events.length
-    ? (
-        (events.filter((event) => event.path.includes("inquir")).length /
-          events.length) *
-        100
-      ).toFixed(1)
+  const events = data.events;
+  const conversion = data.views
+    ? ((data.inquiries / data.views) * 100).toFixed(1)
     : "0.0";
 
   return (
@@ -44,18 +52,14 @@ function TrackingPage() {
       <Analytics />
       <section className="grid gap-4 md:grid-cols-2">
         <Metric
-          label="Top device platform"
-          value={mobile ? "Mobile" : "Desktop"}
-          detail={
-            events.length
-              ? `${Math.round((mobile / events.length) * 100)}% of observed visits`
-              : "Awaiting visitor data"
-          }
+          label="Recorded visits"
+          value={data.views.toString()}
+          detail="Real page-view events in the last 30 days"
         />
         <Metric
           label="Inquiry conversion"
           value={`${conversion}%`}
-          detail={`${events.filter((event) => event.path.includes("inquir")).length} inquiry-page views / ${events.length} events`}
+          detail={`${data.inquiries} submitted inquiries / ${data.views} recorded visits`}
         />
       </section>
       <section className="overflow-hidden rounded-3xl border border-[#d8b76c]/25 bg-card shadow-lg shadow-black/10">

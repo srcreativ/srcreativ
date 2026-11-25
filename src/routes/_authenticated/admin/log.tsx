@@ -2,7 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Download } from "lucide-react";
-import { Inquiries } from "../admin";
 import { SITE } from "@/lib/site-config";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -58,8 +57,8 @@ function LogsPage() {
       <section>
         <div className="flex flex-wrap items-end justify-between gap-5">
           <div>
-            <p className="eyebrow">Audit trail & edge worker diagnostics</p>
-            <h1 className="mt-1 text-3xl font-light">System & Admin Logs</h1>
+            <p className="eyebrow">Audit trail & visitor events</p>
+            <h1 className="mt-1 text-3xl font-light">Visitor event logs</h1>
           </div>
           <button
             type="button"
@@ -73,7 +72,7 @@ function LogsPage() {
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search logs by route, language, referrer, or ID…"
+            placeholder="Search visitor events by route, language, referrer, or ID…"
             className="w-full rounded-full border border-input bg-background px-5 py-3 text-sm outline-none focus:border-primary"
           />
         </div>
@@ -115,7 +114,6 @@ function LogsPage() {
           )}
         </div>
       </section>
-      <Inquiries />
     </div>
   );
 }

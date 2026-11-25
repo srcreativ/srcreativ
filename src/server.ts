@@ -83,7 +83,7 @@ function secureResponse(request: Request, response: Response): Response {
   headers.set("cross-origin-resource-policy", "same-origin");
   headers.set(
     "content-security-policy",
-    "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self' 'unsafe-inline' https://translate.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://translate.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.supabase.co https://*.google.com https://*.gstatic.com; media-src 'self' https://*.supabase.co; connect-src 'self' https://*.supabase.co https://translate.googleapis.com https://translate.google.com; frame-src https://translate.google.com;",
+    "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self' 'unsafe-inline' https://translate.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://translate.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.supabase.co https://*.google.com https://*.gstatic.com; media-src 'self' https://*.supabase.co; connect-src 'self' https://*.supabase.co https://translate.googleapis.com https://translate.google.com; frame-src 'self' blob: https://translate.google.com;",
   );
   if (/^\/(admin|auth)(?:\/|$)/.test(new URL(request.url).pathname)) {
     headers.set("cache-control", "no-store, private");

@@ -18,6 +18,7 @@ import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authentic
 import { Route as AuthenticatedAdminCalendarRouteImport } from './routes/_authenticated/admin/calendar'
 import { Route as AuthenticatedAdminEditRouteImport } from './routes/_authenticated/admin/edit'
 import { Route as AuthenticatedAdminGalleryRouteImport } from './routes/_authenticated/admin/gallery'
+import { Route as AuthenticatedAdminInboxRouteImport } from './routes/_authenticated/admin/inbox'
 import { Route as AuthenticatedAdminLogRouteImport } from './routes/_authenticated/admin/log'
 import { Route as AuthenticatedAdminSecurityRouteImport } from './routes/_authenticated/admin/security'
 import { Route as AuthenticatedAdminTrackRouteImport } from './routes/_authenticated/admin/track'
@@ -69,6 +70,11 @@ const AuthenticatedAdminGalleryRoute =
     path: '/gallery',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminInboxRoute = AuthenticatedAdminInboxRouteImport.update({
+  id: '/inbox',
+  path: '/inbox',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
 const AuthenticatedAdminLogRoute = AuthenticatedAdminLogRouteImport.update({
   id: '/log',
   path: '/log',
@@ -99,6 +105,7 @@ export interface FileRoutesByFullPath {
   '/admin/calendar': typeof AuthenticatedAdminCalendarRoute
   '/admin/edit': typeof AuthenticatedAdminEditRoute
   '/admin/gallery': typeof AuthenticatedAdminGalleryRoute
+  '/admin/inbox': typeof AuthenticatedAdminInboxRoute
   '/admin/log': typeof AuthenticatedAdminLogRoute
   '/admin/security': typeof AuthenticatedAdminSecurityRoute
   '/admin/track': typeof AuthenticatedAdminTrackRoute
@@ -112,6 +119,7 @@ export interface FileRoutesByTo {
   '/admin/calendar': typeof AuthenticatedAdminCalendarRoute
   '/admin/edit': typeof AuthenticatedAdminEditRoute
   '/admin/gallery': typeof AuthenticatedAdminGalleryRoute
+  '/admin/inbox': typeof AuthenticatedAdminInboxRoute
   '/admin/log': typeof AuthenticatedAdminLogRoute
   '/admin/security': typeof AuthenticatedAdminSecurityRoute
   '/admin/track': typeof AuthenticatedAdminTrackRoute
@@ -128,6 +136,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/calendar': typeof AuthenticatedAdminCalendarRoute
   '/_authenticated/admin/edit': typeof AuthenticatedAdminEditRoute
   '/_authenticated/admin/gallery': typeof AuthenticatedAdminGalleryRoute
+  '/_authenticated/admin/inbox': typeof AuthenticatedAdminInboxRoute
   '/_authenticated/admin/log': typeof AuthenticatedAdminLogRoute
   '/_authenticated/admin/security': typeof AuthenticatedAdminSecurityRoute
   '/_authenticated/admin/track': typeof AuthenticatedAdminTrackRoute
@@ -144,6 +153,7 @@ export interface FileRouteTypes {
     | '/admin/calendar'
     | '/admin/edit'
     | '/admin/gallery'
+    | '/admin/inbox'
     | '/admin/log'
     | '/admin/security'
     | '/admin/track'
@@ -157,6 +167,7 @@ export interface FileRouteTypes {
     | '/admin/calendar'
     | '/admin/edit'
     | '/admin/gallery'
+    | '/admin/inbox'
     | '/admin/log'
     | '/admin/security'
     | '/admin/track'
@@ -172,6 +183,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/calendar'
     | '/_authenticated/admin/edit'
     | '/_authenticated/admin/gallery'
+    | '/_authenticated/admin/inbox'
     | '/_authenticated/admin/log'
     | '/_authenticated/admin/security'
     | '/_authenticated/admin/track'
@@ -251,6 +263,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminGalleryRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/inbox': {
+      id: '/_authenticated/admin/inbox'
+      path: '/inbox'
+      fullPath: '/admin/inbox'
+      preLoaderRoute: typeof AuthenticatedAdminInboxRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/log': {
       id: '/_authenticated/admin/log'
       path: '/log'
@@ -286,6 +305,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminCalendarRoute: typeof AuthenticatedAdminCalendarRoute
   AuthenticatedAdminEditRoute: typeof AuthenticatedAdminEditRoute
   AuthenticatedAdminGalleryRoute: typeof AuthenticatedAdminGalleryRoute
+  AuthenticatedAdminInboxRoute: typeof AuthenticatedAdminInboxRoute
   AuthenticatedAdminLogRoute: typeof AuthenticatedAdminLogRoute
   AuthenticatedAdminSecurityRoute: typeof AuthenticatedAdminSecurityRoute
   AuthenticatedAdminTrackRoute: typeof AuthenticatedAdminTrackRoute
@@ -297,6 +317,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminCalendarRoute: AuthenticatedAdminCalendarRoute,
   AuthenticatedAdminEditRoute: AuthenticatedAdminEditRoute,
   AuthenticatedAdminGalleryRoute: AuthenticatedAdminGalleryRoute,
+  AuthenticatedAdminInboxRoute: AuthenticatedAdminInboxRoute,
   AuthenticatedAdminLogRoute: AuthenticatedAdminLogRoute,
   AuthenticatedAdminSecurityRoute: AuthenticatedAdminSecurityRoute,
   AuthenticatedAdminTrackRoute: AuthenticatedAdminTrackRoute,

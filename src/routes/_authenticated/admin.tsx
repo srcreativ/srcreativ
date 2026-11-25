@@ -36,6 +36,7 @@ import {
   House,
   CalendarDays,
   ExternalLink,
+  MessageSquare,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
@@ -88,7 +89,7 @@ async function withUploadTimeout<T>(operation: Promise<T>): Promise<T> {
       () =>
         reject(
           new Error(
-            "The upload timed out. Check that the Supabase gallery bucket and storage policies are configured.",
+            "The upload timed out. Check your connection and the configured media storage.",
           ),
         ),
       30_000,
@@ -106,6 +107,7 @@ const ADMIN_NAV = [
   { label: "Gallery", to: "/admin/gallery", icon: ImageIcon },
   { label: "Tracking", to: "/admin/track", icon: Eye },
   { label: "Calendar", to: "/admin/calendar", icon: CalendarDays },
+  { label: "Inbox", to: "/admin/inbox", icon: MessageSquare },
   { label: "Logs", to: "/admin/log", icon: FileText },
   { label: "Security", to: "/admin/security", icon: ShieldAlert },
   { label: "VDP & HoF", to: "/admin/vdp", icon: LockKeyhole },
@@ -280,9 +282,8 @@ function MobileAdminTools() {
             </button>
           </div>
           <p className="mt-4 text-xs text-muted-foreground">
-            Alerts appear while this installed app or admin page is open. Apply
-            migration <code>0002_enable_inquiry_realtime.sql</code> in Supabase
-            to activate real-time inquiry events.
+            Alerts appear while this installed app or admin page is open. Keep
+            this page open to receive live browser notifications.
           </p>
         </div>
       )}
@@ -1678,8 +1679,8 @@ export function VdpManager() {
                       colSpan={4}
                       className="p-8 text-center text-muted-foreground"
                     >
-                      No VDP reports yet. Public reports will appear here after
-                      the migration is applied.
+                      No VDP reports yet. New public reports will appear here
+                      when submitted.
                     </td>
                   </tr>
                 )}

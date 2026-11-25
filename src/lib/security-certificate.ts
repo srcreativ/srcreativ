@@ -121,7 +121,8 @@ export async function createSecurityCertificate(entry: VdpHallEntry) {
 
 export async function previewSecurityCertificate(entry: VdpHallEntry) {
   const doc = await createSecurityCertificate(entry);
-  return doc.output("bloburl") as string;
+  const blob = doc.output("blob");
+  return URL.createObjectURL(blob);
 }
 
 export async function downloadSecurityCertificate(entry: VdpHallEntry) {
