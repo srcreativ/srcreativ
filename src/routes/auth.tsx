@@ -38,12 +38,12 @@ function AuthPage() {
     e.preventDefault();
     setBusy(true);
     const { error } = await supabase.auth.signInWithPassword({
-      email,
+      email: email.trim().toLowerCase(),
       password,
     });
     setBusy(false);
     if (error) {
-      toast.error(error.message);
+      toast.error("Sign-in failed. Check your email and password.");
       return;
     }
     navigate({ to: "/admin" });
@@ -69,6 +69,7 @@ function AuthPage() {
         <button
           onClick={google}
           type="button"
+          disabled={busy}
           className="mt-8 flex h-11 w-full items-center justify-center gap-[10px] rounded-full border border-primary bg-transparent px-5 text-sm font-medium text-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
         >
           <svg
@@ -102,6 +103,7 @@ function AuthPage() {
           <input
             className={field}
             type="email"
+            autoComplete="email"
             required
             placeholder="Email"
             value={email}
@@ -111,6 +113,7 @@ function AuthPage() {
             <input
               className={`${field} pr-12`}
               type={showPassword ? "text" : "password"}
+              autoComplete="current-password"
               required
               minLength={6}
               placeholder="Password"

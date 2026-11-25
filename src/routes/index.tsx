@@ -319,7 +319,7 @@ function Header() {
       className={`fixed inset-x-0 top-0 z-50 transition-all duration-500 ${scrolled || open ? "border-b border-border bg-background/85 backdrop-blur-md" : "bg-transparent"}`}
     >
       <div className="mx-auto flex h-20 w-full items-center justify-between px-6 lg:px-12">
-        <div id="google_translate_element" className="hidden" />
+        <div id="google_translate_element" className="pointer-events-none fixed -left-[9999px] top-auto h-px w-px overflow-hidden opacity-0" aria-hidden="true" />
         <a href="#top" className="flex items-center gap-2">
           {settings.media.titleIcon ? (
             <img

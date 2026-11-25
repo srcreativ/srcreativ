@@ -2427,9 +2427,6 @@ export function Analytics() {
               </li>
             ))}
           </ul>
-          <span className="pointer-events-none absolute bottom-5 right-6 text-5xl leading-none text-white/35">
-            ✦
-          </span>
         </div>
       </div>
     </section>

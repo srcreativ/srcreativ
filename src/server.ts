@@ -44,7 +44,9 @@ function seoResponse(request: Request): Response | undefined {
     ];
     const entries = urls
       .map(
-        ({ path, priority, changefreq }) => `  <url>\n    <loc>${origin}${path}</loc>\n    <lastmod>${lastModified}</lastmod>\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`)
+        ({ path, priority, changefreq }) =>
+          `  <url>\n    <loc>${origin}${path}</loc>\n    <lastmod>${lastModified}</lastmod>\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`,
+      )
       .join("\n");
     return new Response(
       `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries}\n</urlset>\n`,
@@ -69,8 +71,36 @@ function seoResponse(request: Request): Response | undefined {
   }
 }
 
+function secureResponse(request: Request, response: Response): Response {
+  const headers = new Headers(response.headers);
+  headers.set("x-content-type-options", "nosniff");
+  headers.set("x-frame-options", "DENY");
+  headers.set("referrer-policy", "strict-origin-when-cross-origin");
+  headers.set(
+    "permissions-policy",
+    "camera=(), microphone=(), geolocation=(), payment=()",
+  );
+  headers.set("cross-origin-resource-policy", "same-origin");
+  headers.set(
+    "content-security-policy",
+    "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self' 'unsafe-inline' https://translate.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://translate.google.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.supabase.co https://*.google.com https://*.gstatic.com; media-src 'self' https://*.supabase.co; connect-src 'self' https://*.supabase.co https://translate.googleapis.com https://translate.google.com; frame-src https://translate.google.com;",
+  );
+  if (/^\/(admin|auth)(?:\/|$)/.test(new URL(request.url).pathname)) {
+    headers.set("cache-control", "no-store, private");
+  }
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 async function handleTelemetry(request: Request): Promise<Response> {
   if (request.method !== "POST") return new Response(null, { status: 405 });
+  if (!request.headers.get("content-type")?.includes("application/json"))
+    return new Response(null, { status: 415 });
+  const length = Number(request.headers.get("content-length") ?? 0);
+  if (length > 2048) return new Response(null, { status: 413 });
   try {
     const payload = (await request.json()) as TelemetryPayload;
     const name =
@@ -147,19 +177,25 @@ export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
       const seo = seoResponse(request);
-      if (seo) return seo;
+      if (seo) return secureResponse(request, seo);
       if (new URL(request.url).pathname === "/api/telemetry") {
-        return handleTelemetry(request);
+        return secureResponse(request, await handleTelemetry(request));
       }
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response);
+      return secureResponse(
+        request,
+        await normalizeCatastrophicSsrResponse(response),
+      );
     } catch (error) {
       console.error(error);
-      return new Response(renderErrorPage(), {
-        status: 500,
-        headers: { "content-type": "text/html; charset=utf-8" },
-      });
+      return secureResponse(
+        request,
+        new Response(renderErrorPage(), {
+          status: 500,
+          headers: { "content-type": "text/html; charset=utf-8" },
+        }),
+      );
     }
   },
 };
