@@ -29,7 +29,11 @@
     {
       "title": "Wedding Photography",
       "description": "Full-day coverage from getting ready to the final farewell, with meticulous high-resolution editing.",
-      "points": ["Full-day coverage", "High-res edited gallery", "Heirloom album"]
+      "points": [
+        "Full-day coverage",
+        "High-res edited gallery",
+        "Heirloom album"
+      ]
     },
     {
       "title": "Cinematic Videography",
@@ -84,7 +88,28 @@
     "card": "#292624",
     "radius": 4,
     "headingScale": 1,
-    "sectionOrder": ["hero", "portfolio", "drone", "ad", "artist-profile", "services", "about", "testimonials", "inquiry"]
+    "sectionOrder": [
+      "hero",
+      "portfolio",
+      "drone",
+      "ad",
+      "artist-profile",
+      "services",
+      "about",
+      "testimonials",
+      "inquiry"
+    ],
+    "sectionVisibility": {
+      "hero": true,
+      "portfolio": true,
+      "drone": true,
+      "ad": true,
+      "artist-profile": true,
+      "services": true,
+      "about": true,
+      "testimonials": true,
+      "inquiry": true
+    }
   },
   "media": {
     "titleIcon": "/sr-studio-mark.svg",

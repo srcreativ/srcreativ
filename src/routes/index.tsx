@@ -277,6 +277,7 @@ function Index() {
         <Header />
         <main>
           {settings.theme.sectionOrder.map((section) => {
+            if (settings.theme.sectionVisibility[section] === false) return null;
             const sections: Record<string, ReactNode> = {
               hero: <Hero key="hero" />,
               portfolio: <Portfolio key="portfolio" />,
@@ -398,7 +399,7 @@ function Hero() {
         loop
         muted
         playsInline
-        preload="auto"
+        preload="metadata"
         className="absolute inset-0 h-full w-full object-cover transition-opacity duration-1000"
       />
 
@@ -520,6 +521,7 @@ function Portfolio() {
               src={g.src}
               alt={g.title}
               loading="lazy"
+              decoding="async"
               className={`w-full object-cover transition-transform duration-[1200ms] ease-out group-hover:scale-110 ${g.tall ? "aspect-[3/4]" : "aspect-[4/3]"}`}
             />
             <figcaption className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-overlay/90 via-transparent to-transparent p-6 opacity-0 transition-opacity duration-500 group-hover:opacity-100">
@@ -606,6 +608,7 @@ function ArtistProfile() {
           src={media.artistPortrait || artist}
           alt="The lead photographer of SR Studio"
           loading="lazy"
+          decoding="async"
           width={768}
           height={1024}
           className="aspect-[4/5] w-full object-cover"

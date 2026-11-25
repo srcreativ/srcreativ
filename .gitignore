@@ -36,3 +36,11 @@ dist-ssr
 
 # Reference
 rsc
+
+# Android generated outputs and private signing files
+android/.gradle/
+android/build/
+android/**/build/
+android/*.jks
+android/keystore.properties
+*.apk

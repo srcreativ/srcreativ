@@ -34,6 +34,8 @@ import {
   FileText,
   Settings,
   House,
+  CalendarDays,
+  ExternalLink,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
@@ -51,7 +53,10 @@ import {
   type VdpHallEntry,
   type VdpSettings,
 } from "@/lib/vdp-settings";
-import { downloadSecurityCertificate } from "@/lib/security-certificate";
+import {
+  downloadSecurityCertificate,
+  previewSecurityCertificate,
+} from "@/lib/security-certificate";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
@@ -100,6 +105,7 @@ const ADMIN_NAV = [
   { label: "Home", to: "/admin", icon: House },
   { label: "Gallery", to: "/admin/gallery", icon: ImageIcon },
   { label: "Tracking", to: "/admin/track", icon: Eye },
+  { label: "Calendar", to: "/admin/calendar", icon: CalendarDays },
   { label: "Logs", to: "/admin/log", icon: FileText },
   { label: "Security", to: "/admin/security", icon: ShieldAlert },
   { label: "VDP & HoF", to: "/admin/vdp", icon: LockKeyhole },
@@ -133,7 +139,10 @@ function Admin() {
             <span className="text-primary">ADMIN</span>
           </Link>
           <div className="flex items-center gap-1 sm:gap-2">
-            <nav aria-label="Admin navigation" className="flex items-center gap-1">
+            <nav
+              aria-label="Admin navigation"
+              className="flex items-center gap-1"
+            >
               {ADMIN_NAV.map(({ label, to, icon: Icon }) => (
                 <Link
                   key={to}
@@ -239,7 +248,9 @@ function MobileAdminTools() {
           className="inline-flex items-center justify-center gap-2 rounded-full border border-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
         >
           {open ? "Hide app tools" : "Show app tools"}
-          <ChevronDown className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
+          <ChevronDown
+            className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`}
+          />
         </button>
       </div>
       {open && (
@@ -253,7 +264,9 @@ function MobileAdminTools() {
             <button
               type="button"
               onClick={enableNotifications}
-              disabled={permission === "granted" || permission === "unsupported"}
+              disabled={
+                permission === "granted" || permission === "unsupported"
+              }
               className="inline-flex items-center gap-2 rounded-full border border-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-primary transition-colors hover:bg-primary hover:text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60"
             >
               {permission === "granted" ? (
@@ -268,8 +281,8 @@ function MobileAdminTools() {
           </div>
           <p className="mt-4 text-xs text-muted-foreground">
             Alerts appear while this installed app or admin page is open. Apply
-            migration <code>0002_enable_inquiry_realtime.sql</code> in Supabase to
-            activate real-time inquiry events.
+            migration <code>0002_enable_inquiry_realtime.sql</code> in Supabase
+            to activate real-time inquiry events.
           </p>
         </div>
       )}
@@ -405,7 +418,10 @@ export function SiteEditor() {
               ...service,
               [key]:
                 key === "points"
-                  ? value.split("\n").map((item) => item.trim()).filter(Boolean)
+                  ? value
+                      .split("\n")
+                      .map((item) => item.trim())
+                      .filter(Boolean)
                   : value,
             }
           : service,
@@ -447,63 +463,287 @@ export function SiteEditor() {
       <div className="mt-6 grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <div className="space-y-5">
           <SettingsGroup title="Brand & contact details">
-            <SettingsInput label="Business name" value={draft.brand.name} onChange={(value) => updateGroup("brand", "name", value)} />
-            <SettingsInput label="Short description" value={draft.brand.description} onChange={(value) => updateGroup("brand", "description", value)} textarea />
-            <SettingsInput label="Email" value={draft.brand.email} onChange={(value) => updateGroup("brand", "email", value)} type="email" />
-            <SettingsInput label="Phone" value={draft.brand.phone} onChange={(value) => updateGroup("brand", "phone", value)} type="tel" />
-            <SettingsInput label="Base city" value={draft.brand.location} onChange={(value) => updateGroup("brand", "location", value)} />
+            <SettingsInput
+              label="Business name"
+              value={draft.brand.name}
+              onChange={(value) => updateGroup("brand", "name", value)}
+            />
+            <SettingsInput
+              label="Short description"
+              value={draft.brand.description}
+              onChange={(value) => updateGroup("brand", "description", value)}
+              textarea
+            />
+            <SettingsInput
+              label="Email"
+              value={draft.brand.email}
+              onChange={(value) => updateGroup("brand", "email", value)}
+              type="email"
+            />
+            <SettingsInput
+              label="Phone"
+              value={draft.brand.phone}
+              onChange={(value) => updateGroup("brand", "phone", value)}
+              type="tel"
+            />
+            <SettingsInput
+              label="Base city"
+              value={draft.brand.location}
+              onChange={(value) => updateGroup("brand", "location", value)}
+            />
           </SettingsGroup>
           <SettingsGroup title="Hero section">
-            <SettingsInput label="Small heading" value={draft.hero.eyebrow} onChange={(value) => updateGroup("hero", "eyebrow", value)} />
-            <SettingsInput label="Main heading" value={draft.hero.title} onChange={(value) => updateGroup("hero", "title", value)} />
-            <SettingsInput label="Gold highlighted words" value={draft.hero.highlight} onChange={(value) => updateGroup("hero", "highlight", value)} />
-            <SettingsInput label="Introduction" value={draft.hero.subtitle} onChange={(value) => updateGroup("hero", "subtitle", value)} textarea />
-            <SettingsInput label="Portfolio button" value={draft.hero.primaryCta} onChange={(value) => updateGroup("hero", "primaryCta", value)} />
-            <SettingsInput label="Inquiry button" value={draft.hero.secondaryCta} onChange={(value) => updateGroup("hero", "secondaryCta", value)} />
+            <SettingsInput
+              label="Small heading"
+              value={draft.hero.eyebrow}
+              onChange={(value) => updateGroup("hero", "eyebrow", value)}
+            />
+            <SettingsInput
+              label="Main heading"
+              value={draft.hero.title}
+              onChange={(value) => updateGroup("hero", "title", value)}
+            />
+            <SettingsInput
+              label="Gold highlighted words"
+              value={draft.hero.highlight}
+              onChange={(value) => updateGroup("hero", "highlight", value)}
+            />
+            <SettingsInput
+              label="Introduction"
+              value={draft.hero.subtitle}
+              onChange={(value) => updateGroup("hero", "subtitle", value)}
+              textarea
+            />
+            <SettingsInput
+              label="Portfolio button"
+              value={draft.hero.primaryCta}
+              onChange={(value) => updateGroup("hero", "primaryCta", value)}
+            />
+            <SettingsInput
+              label="Inquiry button"
+              value={draft.hero.secondaryCta}
+              onChange={(value) => updateGroup("hero", "secondaryCta", value)}
+            />
           </SettingsGroup>
           <SettingsGroup title="Artist profile">
-            <SettingsInput label="Section label" value={draft.artist.label} onChange={(value) => updateGroup("artist", "label", value)} />
-            <SettingsInput label="Main title" value={draft.artist.title} onChange={(value) => updateGroup("artist", "title", value)} />
-            <SettingsInput label="Gold highlighted words" value={draft.artist.highlight} onChange={(value) => updateGroup("artist", "highlight", value)} />
-            <SettingsInput label="Achievement number" value={draft.artist.metric} onChange={(value) => updateGroup("artist", "metric", value)} />
-            <SettingsInput label="Achievement description" value={draft.artist.metricLabel} onChange={(value) => updateGroup("artist", "metricLabel", value)} />
+            <SettingsInput
+              label="Section label"
+              value={draft.artist.label}
+              onChange={(value) => updateGroup("artist", "label", value)}
+            />
+            <SettingsInput
+              label="Main title"
+              value={draft.artist.title}
+              onChange={(value) => updateGroup("artist", "title", value)}
+            />
+            <SettingsInput
+              label="Gold highlighted words"
+              value={draft.artist.highlight}
+              onChange={(value) => updateGroup("artist", "highlight", value)}
+            />
+            <SettingsInput
+              label="Achievement number"
+              value={draft.artist.metric}
+              onChange={(value) => updateGroup("artist", "metric", value)}
+            />
+            <SettingsInput
+              label="Achievement description"
+              value={draft.artist.metricLabel}
+              onChange={(value) => updateGroup("artist", "metricLabel", value)}
+            />
             {draft.artist.paragraphs.map((paragraph, index) => (
-              <SettingsInput key={index} label={`Profile paragraph ${index + 1}`} value={paragraph} onChange={(value) => setDraft((current) => ({ ...current, artist: { ...current.artist, paragraphs: current.artist.paragraphs.map((item, position) => position === index ? value : item) } }))} textarea />
+              <SettingsInput
+                key={index}
+                label={`Profile paragraph ${index + 1}`}
+                value={paragraph}
+                onChange={(value) =>
+                  setDraft((current) => ({
+                    ...current,
+                    artist: {
+                      ...current.artist,
+                      paragraphs: current.artist.paragraphs.map(
+                        (item, position) => (position === index ? value : item),
+                      ),
+                    },
+                  }))
+                }
+                textarea
+              />
             ))}
           </SettingsGroup>
           <SettingsGroup title="Services">
             {draft.services.map((service, index) => (
-              <div key={`${service.title}-${index}`} className="space-y-3 rounded-xl border border-border bg-background p-4">
-                <div className="flex items-center justify-between gap-3"><p className="text-sm font-medium">Service {index + 1}</p><button type="button" onClick={() => setDraft((current) => ({ ...current, services: current.services.filter((_, position) => position !== index) }))} className="text-xs text-destructive hover:underline">Remove</button></div>
-                <SettingsInput label="Service name" value={service.title} onChange={(value) => updateService(index, "title", value)} />
-                <SettingsInput label="Description" value={service.description} onChange={(value) => updateService(index, "description", value)} textarea />
-                <SettingsInput label="Included items (one per line)" value={service.points.join("\n")} onChange={(value) => updateService(index, "points", value)} textarea />
+              <div
+                key={`${service.title}-${index}`}
+                className="space-y-3 rounded-xl border border-border bg-background p-4"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-medium">Service {index + 1}</p>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setDraft((current) => ({
+                        ...current,
+                        services: current.services.filter(
+                          (_, position) => position !== index,
+                        ),
+                      }))
+                    }
+                    className="text-xs text-destructive hover:underline"
+                  >
+                    Remove
+                  </button>
+                </div>
+                <SettingsInput
+                  label="Service name"
+                  value={service.title}
+                  onChange={(value) => updateService(index, "title", value)}
+                />
+                <SettingsInput
+                  label="Description"
+                  value={service.description}
+                  onChange={(value) =>
+                    updateService(index, "description", value)
+                  }
+                  textarea
+                />
+                <SettingsInput
+                  label="Included items (one per line)"
+                  value={service.points.join("\n")}
+                  onChange={(value) => updateService(index, "points", value)}
+                  textarea
+                />
               </div>
             ))}
-            <button type="button" onClick={() => setDraft((current) => ({ ...current, services: [...current.services, { title: "New service", description: "", points: [] }] }))} className="inline-flex items-center gap-2 text-sm text-primary hover:underline"><Plus className="h-4 w-4" /> Add service</button>
+            <button
+              type="button"
+              onClick={() =>
+                setDraft((current) => ({
+                  ...current,
+                  services: [
+                    ...current.services,
+                    { title: "New service", description: "", points: [] },
+                  ],
+                }))
+              }
+              className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+            >
+              <Plus className="h-4 w-4" /> Add service
+            </button>
           </SettingsGroup>
           <SettingsGroup title="Client testimonials">
             {draft.testimonials.map((item, index) => (
-              <div key={`${item.name}-${index}`} className="space-y-3 rounded-xl border border-border bg-background p-4">
-                <div className="flex items-center justify-between gap-3"><p className="text-sm font-medium">Testimonial {index + 1}</p><button type="button" onClick={() => setDraft((current) => ({ ...current, testimonials: current.testimonials.filter((_, position) => position !== index) }))} className="text-xs text-destructive hover:underline">Remove</button></div>
-                <SettingsInput label="Couple or client name" value={item.name} onChange={(value) => updateTestimonial(index, "name", value)} />
-                <SettingsInput label="City" value={item.place} onChange={(value) => updateTestimonial(index, "place", value)} />
-                <SettingsInput label="Review" value={item.text} onChange={(value) => updateTestimonial(index, "text", value)} textarea />
+              <div
+                key={`${item.name}-${index}`}
+                className="space-y-3 rounded-xl border border-border bg-background p-4"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-medium">Testimonial {index + 1}</p>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setDraft((current) => ({
+                        ...current,
+                        testimonials: current.testimonials.filter(
+                          (_, position) => position !== index,
+                        ),
+                      }))
+                    }
+                    className="text-xs text-destructive hover:underline"
+                  >
+                    Remove
+                  </button>
+                </div>
+                <SettingsInput
+                  label="Couple or client name"
+                  value={item.name}
+                  onChange={(value) => updateTestimonial(index, "name", value)}
+                />
+                <SettingsInput
+                  label="City"
+                  value={item.place}
+                  onChange={(value) => updateTestimonial(index, "place", value)}
+                />
+                <SettingsInput
+                  label="Review"
+                  value={item.text}
+                  onChange={(value) => updateTestimonial(index, "text", value)}
+                  textarea
+                />
               </div>
             ))}
-            <button type="button" onClick={() => setDraft((current) => ({ ...current, testimonials: [...current.testimonials, { name: "New client", place: "", text: "" }] }))} className="inline-flex items-center gap-2 text-sm text-primary hover:underline"><Plus className="h-4 w-4" /> Add testimonial</button>
+            <button
+              type="button"
+              onClick={() =>
+                setDraft((current) => ({
+                  ...current,
+                  testimonials: [
+                    ...current.testimonials,
+                    { name: "New client", place: "", text: "" },
+                  ],
+                }))
+              }
+              className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+            >
+              <Plus className="h-4 w-4" /> Add testimonial
+            </button>
           </SettingsGroup>
           <SettingsGroup title="Inquiry & footer">
-            <SettingsInput label="Inquiry small heading" value={draft.inquiry.eyebrow} onChange={(value) => updateGroup("inquiry", "eyebrow", value)} />
-            <SettingsInput label="Inquiry title" value={draft.inquiry.title} onChange={(value) => updateGroup("inquiry", "title", value)} />
-            <SettingsInput label="Inquiry highlighted words" value={draft.inquiry.highlight} onChange={(value) => updateGroup("inquiry", "highlight", value)} />
-            <SettingsInput label="Inquiry description" value={draft.inquiry.description} onChange={(value) => updateGroup("inquiry", "description", value)} textarea />
-            <SettingsInput label="Location field label" value={draft.inquiry.locationLabel} onChange={(value) => updateGroup("inquiry", "locationLabel", value)} />
-            <SettingsInput label="Submit button" value={draft.inquiry.submitLabel} onChange={(value) => updateGroup("inquiry", "submitLabel", value)} />
-            <SettingsInput label="Footer heading" value={draft.footer.headline} onChange={(value) => updateGroup("footer", "headline", value)} />
-            <SettingsInput label="Footer highlighted words" value={draft.footer.highlight} onChange={(value) => updateGroup("footer", "highlight", value)} />
-            <SettingsInput label="Footer availability message" value={draft.footer.availability} onChange={(value) => updateGroup("footer", "availability", value)} />
-            <SettingsInput label="Copyright name" value={draft.footer.copyrightName} onChange={(value) => updateGroup("footer", "copyrightName", value)} />
+            <SettingsInput
+              label="Inquiry small heading"
+              value={draft.inquiry.eyebrow}
+              onChange={(value) => updateGroup("inquiry", "eyebrow", value)}
+            />
+            <SettingsInput
+              label="Inquiry title"
+              value={draft.inquiry.title}
+              onChange={(value) => updateGroup("inquiry", "title", value)}
+            />
+            <SettingsInput
+              label="Inquiry highlighted words"
+              value={draft.inquiry.highlight}
+              onChange={(value) => updateGroup("inquiry", "highlight", value)}
+            />
+            <SettingsInput
+              label="Inquiry description"
+              value={draft.inquiry.description}
+              onChange={(value) => updateGroup("inquiry", "description", value)}
+              textarea
+            />
+            <SettingsInput
+              label="Location field label"
+              value={draft.inquiry.locationLabel}
+              onChange={(value) =>
+                updateGroup("inquiry", "locationLabel", value)
+              }
+            />
+            <SettingsInput
+              label="Submit button"
+              value={draft.inquiry.submitLabel}
+              onChange={(value) => updateGroup("inquiry", "submitLabel", value)}
+            />
+            <SettingsInput
+              label="Footer heading"
+              value={draft.footer.headline}
+              onChange={(value) => updateGroup("footer", "headline", value)}
+            />
+            <SettingsInput
+              label="Footer highlighted words"
+              value={draft.footer.highlight}
+              onChange={(value) => updateGroup("footer", "highlight", value)}
+            />
+            <SettingsInput
+              label="Footer availability message"
+              value={draft.footer.availability}
+              onChange={(value) => updateGroup("footer", "availability", value)}
+            />
+            <SettingsInput
+              label="Copyright name"
+              value={draft.footer.copyrightName}
+              onChange={(value) =>
+                updateGroup("footer", "copyrightName", value)
+              }
+            />
           </SettingsGroup>
           <div className="mt-4 flex flex-wrap gap-3">
             <button
@@ -528,7 +768,7 @@ export function SiteEditor() {
           <div className="mt-4 overflow-hidden rounded-xl border border-primary/40 bg-card">
             <div className="flex items-center justify-between border-b border-border px-4 py-3 text-xs">
               <span className="tracking-[0.2em]">
-              {draft.brand.name.toUpperCase()}
+                {draft.brand.name.toUpperCase()}
               </span>
               <span className="text-primary">MENU</span>
             </div>
@@ -561,9 +801,18 @@ export function SiteEditor() {
   );
 }
 
-function SettingsGroup({ title, children }: { title: string; children: ReactNode }) {
+function SettingsGroup({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
   return (
-    <details open className="group rounded-2xl border border-border bg-card p-5">
+    <details
+      open
+      className="group rounded-2xl border border-border bg-card p-5"
+    >
       <summary className="flex cursor-pointer list-none items-center justify-between text-lg font-light [&::-webkit-details-marker]:hidden [&::marker]:content-none">
         {title}
         <ChevronDown
@@ -576,8 +825,39 @@ function SettingsGroup({ title, children }: { title: string; children: ReactNode
   );
 }
 
-function SettingsInput({ label, value, onChange, textarea = false, type = "text" }: { label: string; value: string; onChange: (value: string) => void; textarea?: boolean; type?: string }) {
-  return <label className={`block text-sm ${textarea ? "sm:col-span-2" : ""}`}><span className="mb-2 block text-foreground">{label}</span>{textarea ? <textarea value={value} onChange={(event) => onChange(event.target.value)} rows={4} className="w-full resize-y rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none focus:border-primary" /> : <input type={type} value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none focus:border-primary" />}</label>;
+function SettingsInput({
+  label,
+  value,
+  onChange,
+  textarea = false,
+  type = "text",
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  textarea?: boolean;
+  type?: string;
+}) {
+  return (
+    <label className={`block text-sm ${textarea ? "sm:col-span-2" : ""}`}>
+      <span className="mb-2 block text-foreground">{label}</span>
+      {textarea ? (
+        <textarea
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          rows={4}
+          className="w-full resize-y rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none focus:border-primary"
+        />
+      ) : (
+        <input
+          type={type}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none focus:border-primary"
+        />
+      )}
+    </label>
+  );
 }
 
 export function SocialLinksEditor() {
@@ -609,11 +889,7 @@ export function SocialLinksEditor() {
     }
   }, [data, isLoading, loaded]);
 
-  const update = (
-    index: number,
-    key: "label" | "url",
-    value: string,
-  ) =>
+  const update = (index: number, key: "label" | "url", value: string) =>
     setLinks((current) =>
       current.map((link, position) =>
         position === index ? { ...link, [key]: value } : link,
@@ -625,7 +901,9 @@ export function SocialLinksEditor() {
       .map((link) => ({ label: link.label.trim(), url: link.url.trim() }))
       .filter((link) => link.label || link.url);
     if (cleaned.some((link) => !link.label || !safeHyperlink(link.url))) {
-      toast.error("Every link needs a label and a valid http(s), mailto, or tel URL.");
+      toast.error(
+        "Every link needs a label and a valid http(s), mailto, or tel URL.",
+      );
       return;
     }
     const settings = siteSettingsFrom(data);
@@ -711,7 +989,9 @@ export function SocialLinksEditor() {
       <div className="mt-5 flex flex-wrap gap-3">
         <button
           type="button"
-          onClick={() => setLinks((current) => [...current, { label: "", url: "" }])}
+          onClick={() =>
+            setLinks((current) => [...current, { label: "", url: "" }])
+          }
           className="inline-flex items-center gap-2 rounded-full border border-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-primary hover:bg-primary hover:text-primary-foreground"
         >
           <Plus className="h-4 w-4" /> Add hyperlink
@@ -1006,7 +1286,30 @@ export function ThemeMediaStudio() {
                     className="flex cursor-grab items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 text-sm active:cursor-grabbing"
                   >
                     <GripVertical className="h-4 w-4 text-primary" />
-                    {SECTION_LABELS[section] || section}
+                    <span className="flex-1">
+                      {SECTION_LABELS[section] || section}
+                    </span>
+                    <label className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+                      <span>
+                        {draft.theme.sectionVisibility[section] === false
+                          ? "Hidden"
+                          : "Visible"}
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={
+                          draft.theme.sectionVisibility[section] !== false
+                        }
+                        onChange={(event) =>
+                          updateTheme("sectionVisibility", {
+                            ...draft.theme.sectionVisibility,
+                            [section]: event.target.checked,
+                          })
+                        }
+                        className="size-4 accent-[var(--primary)]"
+                        aria-label={`Show ${SECTION_LABELS[section] || section} section`}
+                      />
+                    </label>
                   </div>
                 ))}
               </div>
@@ -1131,6 +1434,10 @@ export function ThemeMediaStudio() {
                 className="p-4 text-xs opacity-80"
               >
                 {draft.theme.sectionOrder
+                  .filter(
+                    (section) =>
+                      draft.theme.sectionVisibility[section] !== false,
+                  )
                   .map((section) => SECTION_LABELS[section])
                   .filter(Boolean)
                   .join(" · ")}
@@ -1153,6 +1460,10 @@ export function VdpManager() {
   const [tab, setTab] = useState<"reports" | "hall" | "policy">("reports");
   const [settings, setSettings] = useState<VdpSettings>(DEFAULT_VDP_SETTINGS);
   const [draftEntry, setDraftEntry] = useState<VdpHallEntry | null>(null);
+  const [certificatePreview, setCertificatePreview] = useState<{
+    name: string;
+    url: string;
+  } | null>(null);
   const [busy, setBusy] = useState(false);
   const { data: storedSettings } = useQuery({
     queryKey: ["vdp-program-settings-admin"],
@@ -1544,6 +1855,22 @@ export function VdpManager() {
                   >
                     <Download className="h-3.5 w-3.5" /> Certificate
                   </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        setCertificatePreview({
+                          name: entry.name,
+                          url: await previewSecurityCertificate(entry),
+                        });
+                      } catch (error) {
+                        toast.error((error as Error).message);
+                      }
+                    }}
+                    className="inline-flex items-center gap-1 rounded-full border border-primary/50 px-3 py-1.5 text-xs text-primary"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" /> Preview PDF
+                  </button>
                   {!entry.id.startsWith("default-") && (
                     <button
                       type="button"
@@ -1650,6 +1977,37 @@ export function VdpManager() {
               /.well-known/security.txt
             </h3>
             <pre className="mt-5 whitespace-pre-wrap rounded-xl border border-border bg-card p-4 text-xs leading-relaxed text-muted-foreground">{`Contact: mailto:${settings.securityEmail}\nExpires: ${settings.expiryDate}T00:00:00.000Z\nEncryption: https://srstudio.in/.well-known/pgp-key.asc\n# Fingerprint: ${settings.pgpFingerprint}\nAcknowledgments: https://srstudio.in/vulnerability-disclosure#hall-of-fame\nPreferred-Languages: en, hi\nCanonical: https://srstudio.in/.well-known/security.txt\nPolicy: https://srstudio.in/vulnerability-disclosure#scope`}</pre>
+          </div>
+        </div>
+      )}
+      {certificatePreview && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/75 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Certificate preview"
+        >
+          <div className="flex h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-primary/40 bg-card">
+            <div className="flex items-center justify-between border-b border-border px-4 py-3">
+              <p className="text-sm font-medium">
+                Certificate preview · {certificatePreview.name}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  URL.revokeObjectURL(certificatePreview.url);
+                  setCertificatePreview(null);
+                }}
+                className="rounded-full border border-border px-3 py-1.5 text-xs"
+              >
+                Close
+              </button>
+            </div>
+            <iframe
+              title="Security recognition certificate"
+              src={certificatePreview.url}
+              className="min-h-0 flex-1 bg-white"
+            />
           </div>
         </div>
       )}

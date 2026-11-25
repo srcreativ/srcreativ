@@ -16,7 +16,7 @@ function drawFlourish(doc: jsPDF, x: number, y: number, direction: 1 | -1) {
   doc.line(x - 17 * direction, y, x - 30 * direction, y + 4);
 }
 
-export async function downloadSecurityCertificate(entry: VdpHallEntry) {
+export async function createSecurityCertificate(entry: VdpHallEntry) {
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const width = 297;
   const height = 210;
@@ -116,6 +116,16 @@ export async function downloadSecurityCertificate(entry: VdpHallEntry) {
     197,
     { align: "center" },
   );
+  return doc;
+}
+
+export async function previewSecurityCertificate(entry: VdpHallEntry) {
+  const doc = await createSecurityCertificate(entry);
+  return doc.output("bloburl") as string;
+}
+
+export async function downloadSecurityCertificate(entry: VdpHallEntry) {
+  const doc = await createSecurityCertificate(entry);
   doc.save(
     `sr-studio-security-recognition-${entry.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.pdf`,
   );

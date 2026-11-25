@@ -2,14 +2,9 @@
 
 The Android app is a lightweight Capacitor shell for the live SR Studio admin website. It deliberately does not package the website's videos and gallery assets; the app loads the current Cloudflare Worker instead.
 
-## Build commands
+## Releases are built only on GitHub
 
-```bash
-npm run android:debug
-npm run android:release
-```
-
-`android:prepare` syncs Capacitor, then removes the copied media bundle while keeping the small native bridge and offline connection shell. This reduces the APK substantially compared with bundling the entire website.
+No APK is kept or built locally. GitHub Actions builds the signed APK, removes the bundled media payload, names it `SR-Studio-Admin-vX.Y.Z.apk`, and attaches it to a GitHub Release. This keeps the repository and development machines free of release APKs.
 
 ## Production signing
 
@@ -20,7 +15,7 @@ keytool -genkeypair -v -keystore android/release-keystore.jks -alias sr-studio -
 cp android/keystore.properties.example android/keystore.properties
 ```
 
-Fill `android/keystore.properties` with the key details, then run `npm run android:release`. Do not commit the `.jks` file or real properties file.
+Keep the key safely offline. Do not commit the `.jks` file or real properties file.
 
 For GitHub Releases, add these GitHub repository secrets:
 
@@ -29,7 +24,7 @@ For GitHub Releases, add these GitHub repository secrets:
 - `ANDROID_KEY_ALIAS`
 - `ANDROID_KEY_PASSWORD`
 
-Tag a release as `android-v1.1.0` (then increase `versionCode` and `versionName` for every future update). The workflow builds a signed release APK and publishes it to GitHub Releases.
+To release from GitHub, either push a tag such as `android-v1.1.0`, or use **Actions → Android APK release → Run workflow** and enter `1.1.0`. The workflow derives Android's increasing version code from the semantic version and publishes a signed `SR-Studio-Admin-v1.1.0.apk` GitHub Release.
 
 ## In-app updater
 

@@ -80,7 +80,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     head: () => ({
       meta: [
         { charSet: "utf-8" },
-        { name: "viewport", content: "width=device-width, initial-scale=1" },
+        {
+          name: "viewport",
+          content: "width=device-width, initial-scale=1, viewport-fit=cover",
+        },
+        { name: "format-detection", content: "telephone=yes" },
+        { name: "mobile-web-app-capable", content: "yes" },
         { name: "theme-color", content: "#211f1d" },
         { title: `${SITE.name} | Wedding Photography & Films` },
         {
@@ -94,7 +99,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         { property: "og:image", content: siteUrl("/controller.png") },
         {
           property: "og:image:alt",
-          content: "SR Studio wedding film controller and cinematic production setup",
+          content:
+            "SR Studio wedding film controller and cinematic production setup",
         },
         { name: "twitter:card", content: "summary_large_image" },
       ],

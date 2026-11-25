@@ -14,6 +14,24 @@ export type Database = {
   };
   public: {
     Tables: {
+      booking_notes: {
+        Row: {
+          id: string;
+          event_date: string;
+          note: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          event_date: string;
+          note?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: { event_date?: string; note?: string; updated_at?: string };
+        Relationships: [];
+      };
       gallery_images: {
         Row: {
           category: string;

@@ -52,6 +52,7 @@ export type SiteSettings = {
     radius: number;
     headingScale: number;
     sectionOrder: string[];
+    sectionVisibility: Record<string, boolean>;
   };
   media: {
     titleIcon: string;
@@ -171,6 +172,17 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
       "testimonials",
       "inquiry",
     ],
+    sectionVisibility: {
+      hero: true,
+      portfolio: true,
+      drone: true,
+      ad: true,
+      "artist-profile": true,
+      services: true,
+      about: true,
+      testimonials: true,
+      inquiry: true,
+    },
   },
   media: {
     titleIcon: "/sr-studio-mark.svg",
@@ -241,7 +253,10 @@ function normaliseSocialLinks(
     ["YouTube", footer?.youtube],
     ["Facebook", footer?.facebook],
   ]
-    .filter(([, url]): url is string => typeof url === "string" && Boolean(url.trim()))
+    .filter(
+      ([, url]): url is string =>
+        typeof url === "string" && Boolean(url.trim()),
+    )
     .map(([label, url]) => ({ label, url: url.trim() }));
 }
 
