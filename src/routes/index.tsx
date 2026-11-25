@@ -217,8 +217,20 @@ const useSiteSettings = () => useContext(SiteSettingsContext);
 
 const inquirySchema = z.object({
   name: z.string().trim().min(1, "Please enter your name").max(100),
-  email: z.string().trim().email("Please enter a valid email").max(255),
-  phone: z.string().trim().max(30, "Phone number is too long").optional(),
+  email: z
+    .string()
+    .trim()
+    .max(254, "Email address is too long")
+    .regex(
+      /^[^\s@]+@[^\s@]+\.[^\s@]{2,63}$/,
+      "Enter an email with @ and a valid domain ending",
+    ),
+  phone: z
+    .string()
+    .trim()
+    .regex(/^\+?[0-9]{7,15}$/, "Enter 7–15 digits, optionally starting with +")
+    .optional()
+    .or(z.literal("")),
   date: z.string().min(1, "Please choose your wedding date"),
   location: z.string().trim().min(1, "Please enter a location").max(150),
   services: z.array(z.string()).min(1, "Select at least one service"),
@@ -805,7 +817,7 @@ function Inquiry() {
               t: "email",
               p: "you@example.com",
             },
-            { n: "phone", l: "Phone number", t: "tel", p: "+91 8114350249" },
+            { n: "phone", l: "Phone number", t: "tel", p: "+918114350249" },
           ].map((f) => (
             <label key={f.n} className="block">
               <span className="mb-2 block text-sm text-foreground">
@@ -818,7 +830,20 @@ function Inquiry() {
                 name={f.n}
                 type={f.t}
                 placeholder={f.p}
-                maxLength={f.n === "phone" ? 30 : 150}
+                maxLength={f.n === "phone" ? 16 : f.n === "email" ? 254 : 100}
+                inputMode={f.n === "phone" ? "tel" : undefined}
+                autoComplete={f.n === "email" ? "email" : f.n === "phone" ? "tel" : "name"}
+                onInput={
+                  f.n === "phone"
+                    ? (event) => {
+                        const input = event.currentTarget;
+                        input.value = input.value
+                          .replace(/(?!^)\+/g, "")
+                          .replace(/[^+0-9]/g, "")
+                          .slice(0, 16);
+                      }
+                    : undefined
+                }
                 className={`${field} [color-scheme:dark]`}
               />
               {errors[f.n] && (
