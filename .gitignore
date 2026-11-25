@@ -44,3 +44,7 @@ android/**/build/
 android/*.jks
 android/keystore.properties
 *.apk
+
+# Local Android release-key backup (never commit)
+/sr-studio-release-keystore.jks
+/sr-studio-release-signing.properties
