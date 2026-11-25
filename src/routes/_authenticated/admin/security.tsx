@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { BookOpenText, KeyRound, ShieldCheck } from "lucide-react";
 import { AccountSettings } from "../admin";
 import {
@@ -158,14 +158,42 @@ function AdminGuide() {
           </button>
         </form>
       ) : (
-        <div className="mt-5 rounded-xl border border-border bg-background p-5">
-          <pre className="whitespace-pre-wrap font-sans text-sm leading-6 text-foreground">
-            {guide}
-          </pre>
-        </div>
+        <MarkdownGuide content={guide} />
       )}
       {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
     </section>
+  );
+}
+
+function MarkdownGuide({ content }: { content: string }) {
+  const inline = (text: string): ReactNode =>
+    text.split(/(\*\*[^*]+\*\*)/g).map((part, index) =>
+      part.startsWith("**") && part.endsWith("**") ? (
+        <strong key={index}>{part.slice(2, -2)}</strong>
+      ) : (
+        part
+      ),
+    );
+
+  return (
+    <article className="prose-guide mt-5 rounded-xl border border-border bg-background p-5 text-sm leading-7 text-foreground">
+      {content
+        .trim()
+        .split(/\n\s*\n/)
+        .map((block, index) => {
+          const lines = block.split("\n").filter(Boolean);
+          const first = lines[0] ?? "";
+          if (first.startsWith("# "))
+            return <h3 key={index} className="text-2xl font-light">{inline(first.slice(2))}</h3>;
+          if (first.startsWith("## "))
+            return <h4 key={index} className="mt-7 text-lg font-medium text-primary">{inline(first.slice(3))}</h4>;
+          if (lines.every((line) => /^\d+\.\s+/.test(line)))
+            return <ol key={index} className="my-4 list-decimal space-y-1 pl-5">{lines.map((line) => <li key={line}>{inline(line.replace(/^\d+\.\s+/, ""))}</li>)}</ol>;
+          if (lines.every((line) => /^[-*]\s+/.test(line)))
+            return <ul key={index} className="my-4 list-disc space-y-1 pl-5">{lines.map((line) => <li key={line}>{inline(line.replace(/^[-*]\s+/, ""))}</li>)}</ul>;
+          return <p key={index} className="mt-4 text-muted-foreground">{inline(lines.join(" "))}</p>;
+        })}
+    </article>
   );
 }
 

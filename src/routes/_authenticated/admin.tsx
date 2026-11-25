@@ -103,7 +103,7 @@ async function withUploadTimeout<T>(operation: Promise<T>): Promise<T> {
 }
 
 const ADMIN_NAV = [
-  { label: "Home", to: "/admin", icon: House },
+  { label: "Public website", to: "/", icon: House },
   { label: "Gallery", to: "/admin/gallery", icon: ImageIcon },
   { label: "Tracking", to: "/admin/track", icon: Eye },
   { label: "Calendar", to: "/admin/calendar", icon: CalendarDays },
@@ -1173,9 +1173,14 @@ export function ThemeMediaStudio() {
         <button
           type="button"
           onClick={() => setOpen((value) => !value)}
-          className="rounded-full border border-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-primary"
+          aria-expanded={open}
+          className="inline-flex items-center gap-2 rounded-full border border-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
         >
           {open ? "Minimize editor" : "Maximize editor"}
+          <ChevronDown
+            aria-hidden="true"
+            className={`size-4 transition-transform ${open ? "rotate-180" : ""}`}
+          />
         </button>
       </div>
       {open && (
@@ -1183,10 +1188,11 @@ export function ThemeMediaStudio() {
           <div className="space-y-6">
             <details
               open
-              className="rounded-2xl border border-border bg-background p-5"
+              className="group rounded-2xl border border-border bg-background p-5"
             >
-              <summary className="cursor-pointer text-lg font-light">
+              <summary className="flex cursor-pointer list-none items-center justify-between text-lg font-light [&::-webkit-details-marker]:hidden [&::marker]:content-none">
                 Theme controls
+                <ChevronDown aria-hidden="true" className="size-4 transition-transform group-open:rotate-180" />
               </summary>
               <div className="mt-5 grid gap-4 sm:grid-cols-2">
                 {(
@@ -1268,10 +1274,11 @@ export function ThemeMediaStudio() {
             </details>
             <details
               open
-              className="rounded-2xl border border-border bg-background p-5"
+              className="group rounded-2xl border border-border bg-background p-5"
             >
-              <summary className="cursor-pointer text-lg font-light">
+              <summary className="flex cursor-pointer list-none items-center justify-between text-lg font-light [&::-webkit-details-marker]:hidden [&::marker]:content-none">
                 Section order
+                <ChevronDown aria-hidden="true" className="size-4 transition-transform group-open:rotate-180" />
               </summary>
               <p className="mt-2 text-sm text-muted-foreground">
                 Drag a row to rearrange the public landing page.
@@ -1317,10 +1324,11 @@ export function ThemeMediaStudio() {
             </details>
             <details
               open
-              className="rounded-2xl border border-border bg-background p-5"
+              className="group rounded-2xl border border-border bg-background p-5"
             >
-              <summary className="cursor-pointer text-lg font-light">
+              <summary className="flex cursor-pointer list-none items-center justify-between text-lg font-light [&::-webkit-details-marker]:hidden [&::marker]:content-none">
                 Landing-page media
+                <ChevronDown aria-hidden="true" className="size-4 transition-transform group-open:rotate-180" />
               </summary>
               <p className="mt-2 text-sm text-muted-foreground">
                 Upload JPG, PNG, WebP, SVG, MP4, or WebM files. Video and image
@@ -2247,7 +2255,7 @@ function Stat({
   }[tone];
 
   return (
-    <div className="relative isolate overflow-hidden rounded-xl border border-[#d8b76c]/45 bg-[#171613] p-5 shadow-[0_16px_38px_-24px_rgba(232,185,87,0.85)]">
+    <div className="relative isolate overflow-hidden rounded-xl border border-[#d8b76c]/40 bg-[#171613] p-5 shadow-[0_10px_24px_-20px_rgba(232,185,87,0.55)]">
       <div
         className={`pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_18%_8%,var(--tw-gradient-stops),transparent_58%)] ${glow}`}
       />
@@ -2258,7 +2266,7 @@ function Stat({
         <p className="eyebrow text-[#f4e6c7]">{label}</p>
       </div>
       <div className="mt-6 flex items-end gap-2">
-        <p className="text-4xl font-light leading-none text-[#ffe1a1] [text-shadow:0_0_17px_rgba(238,182,78,0.42)]">
+        <p className="text-3xl font-light leading-none text-[#ffe1a1] [text-shadow:0_0_10px_rgba(238,182,78,0.28)]">
           {value}
         </p>
         <span className="pb-1 text-xs text-[#d8ad68]">{change}</span>
@@ -2329,7 +2337,7 @@ export function Analytics() {
 
   return (
     <section className="max-w-6xl">
-      <h2 className="mb-6 text-[1.65rem] font-light tracking-tight text-[#f5d696]">
+      <h2 className="mb-5 text-2xl font-medium tracking-tight text-[#f5d696]">
         Analytics{" "}
         <span className="text-base text-muted-foreground">(last 30 days)</span>
       </h2>
@@ -2375,7 +2383,7 @@ export function Analytics() {
         />
       </div>
       <div className="mt-6 grid gap-4 lg:grid-cols-3">
-        <div className="rounded-xl border border-[#d8b76c]/35 bg-[#171613] p-5 shadow-[0_18px_42px_-28px_rgba(232,185,87,0.7)] lg:col-span-2">
+        <div className="rounded-xl border border-[#d8b76c]/35 bg-[#171613] p-5 shadow-[0_10px_24px_-20px_rgba(232,185,87,0.5)] lg:col-span-2">
           <p className="eyebrow mb-4 text-[#f4d58d]">Daily views (14 days)</p>
           <div className="grid h-40 grid-cols-14 grid-rows-4 overflow-hidden rounded-sm border border-white/15 bg-[linear-gradient(to_right,rgba(255,255,255,0.12)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.12)_1px,transparent_1px)] bg-[size:calc(100%/14)_25%] px-2 pt-2">
             {days.map((d) => (
@@ -2401,7 +2409,7 @@ export function Analytics() {
             ))}
           </div>
         </div>
-        <div className="relative overflow-hidden rounded-xl border border-[#d8b76c]/35 bg-[#171613] p-5 shadow-[0_18px_42px_-28px_rgba(232,185,87,0.7)]">
+        <div className="relative overflow-hidden rounded-xl border border-[#d8b76c]/35 bg-[#171613] p-5 shadow-[0_10px_24px_-20px_rgba(232,185,87,0.5)]">
           <p className="eyebrow mb-4 text-[#f4d58d]">Visitor languages</p>
           <ul className="space-y-3 text-sm">
             {langs.length === 0 && (
