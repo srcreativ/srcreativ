@@ -6,6 +6,13 @@ if (signingPropertiesFile.exists()) {
     signingPropertiesFile.withInputStream { signingProperties.load(it) }
 }
 
+def releaseVersionCode = (project.hasProperty('releaseVersionCode')
+    ? project.property('releaseVersionCode')
+    : '2').toString().toInteger()
+def releaseVersionName = (project.hasProperty('releaseVersionName')
+    ? project.property('releaseVersionName')
+    : '1.1.0').toString()
+
 android {
     namespace = "in.srstudio.admin"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -16,8 +23,8 @@ android {
         applicationId "in.srstudio.admin"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode (project.findProperty('releaseVersionCode') ?: 2).toInteger()
-        versionName (project.findProperty('releaseVersionName') ?: "1.1.0").toString()
+        versionCode releaseVersionCode
+        versionName releaseVersionName
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
