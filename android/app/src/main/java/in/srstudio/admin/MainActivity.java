@@ -11,6 +11,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.Settings;
+import android.content.pm.PackageManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
 import android.widget.Toast;
@@ -18,6 +19,11 @@ import android.widget.Toast;
 import androidx.core.content.FileProvider;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
+import androidx.work.Constraints;
+import androidx.work.ExistingPeriodicWorkPolicy;
+import androidx.work.NetworkType;
+import androidx.work.PeriodicWorkRequest;
+import androidx.work.WorkManager;
 
 import com.getcapacitor.BridgeActivity;
 
@@ -31,6 +37,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends BridgeActivity {
     private static final String RELEASE_API = "https://api.github.com/repos/srcreativ/srcreativ/releases/latest";
@@ -65,6 +72,8 @@ public class MainActivity extends BridgeActivity {
         insets.setAppearanceLightStatusBars(false);
         insets.setAppearanceLightNavigationBars(false);
         configureWebView();
+        requestNotificationPermission();
+        scheduleInquiryPolling();
         IntentFilter filter = new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(downloadReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
@@ -72,6 +81,26 @@ public class MainActivity extends BridgeActivity {
             registerReceiver(downloadReceiver, filter);
         }
         checkForGithubUpdate(false);
+    }
+
+    private void requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+            && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[] { android.Manifest.permission.POST_NOTIFICATIONS }, 2001);
+        }
+    }
+
+    private void scheduleInquiryPolling() {
+        Constraints constraints = new Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build();
+        PeriodicWorkRequest request = new PeriodicWorkRequest.Builder(
+            InquiryPollWorker.class, 15, TimeUnit.MINUTES
+        ).setConstraints(constraints).build();
+        WorkManager.getInstance(getApplicationContext()).enqueueUniquePeriodicWork(
+            "sr-studio-inquiry-poll", ExistingPeriodicWorkPolicy.UPDATE, request
+        );
     }
 
     private void configureWebView() {

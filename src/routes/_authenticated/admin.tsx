@@ -5,7 +5,7 @@ import {
   useNavigate,
 } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import {
   Trash2,
@@ -317,37 +317,40 @@ function MobileAdminTools() {
 
 function InquiryAlerts() {
   const qc = useQueryClient();
+  const previousCount = useRef<number | null>(null);
 
   useEffect(() => {
-    const channel = supabase
-      .channel("admin-inquiry-alerts")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "inquiries" },
-        (payload) => {
-          const inquiry = payload.new as { name?: string; email?: string };
+    let active = true;
+    const poll = async () => {
+      try {
+        const response = await fetch("/api/inquiries/status", {
+          cache: "no-store",
+        });
+        if (!response.ok || !active) return;
+        const payload = (await response.json()) as { count?: unknown };
+        const count = typeof payload.count === "number" ? payload.count : null;
+        if (count === null) return;
+        if (previousCount.current !== null && count > previousCount.current) {
           const title = "New wedding inquiry";
-          const body = inquiry.name
-            ? `${inquiry.name}${inquiry.email ? ` · ${inquiry.email}` : ""}`
-            : "Open the admin panel to review it.";
+          const body = "Open the admin panel to review it.";
           qc.invalidateQueries({ queryKey: ["inquiries"] });
           qc.invalidateQueries({ queryKey: ["analytics"] });
-          toast.success(title, {
-            description: body,
-            icon: <BellRing className="h-4 w-4" />,
-          });
-          if (
-            typeof Notification !== "undefined" &&
-            Notification.permission === "granted"
-          ) {
+          toast.success(title, { description: body, icon: <BellRing className="h-4 w-4" /> });
+          if (typeof Notification !== "undefined" && Notification.permission === "granted") {
             new Notification(title, { body, icon: "/sr-studio-mark.svg" });
           }
-        },
-      )
-      .subscribe();
+        }
+        previousCount.current = count;
+      } catch {
+        // A transient status check failure should not interrupt the admin UI.
+      }
+    };
 
+    void poll();
+    const interval = window.setInterval(() => void poll(), 30_000);
     return () => {
-      supabase.removeChannel(channel);
+      active = false;
+      window.clearInterval(interval);
     };
   }, [qc]);
 
@@ -1476,11 +1479,15 @@ export function ThemeMediaStudio() {
                   .join(" · ")}
               </div>
             </div>
-            <iframe
-              title="Published public website preview"
-              src="/"
-              className="mt-5 h-80 w-full rounded-xl border border-border bg-card"
-            />
+            <a
+              href="/"
+              target="_blank"
+              rel="noreferrer"
+              className="mt-5 flex min-h-20 items-center justify-between rounded-xl border border-border bg-card px-4 text-sm text-muted-foreground transition-colors hover:border-primary/60 hover:text-primary"
+            >
+              <span>Open the published website in a new tab</span>
+              <ExternalLink className="size-4" aria-hidden="true" />
+            </a>
           </aside>
         </div>
       )}
@@ -2230,6 +2237,16 @@ export function AccountSettings() {
         onSubmit={updatePassword}
         className="mt-6 grid gap-4 md:grid-cols-[1fr_1fr_auto]"
       >
+        <input
+          type="text"
+          name="username"
+          autoComplete="username"
+          value="SR Studio administrator"
+          readOnly
+          tabIndex={-1}
+          aria-hidden="true"
+          className="sr-only"
+        />
         <input
           type="password"
           value={password}

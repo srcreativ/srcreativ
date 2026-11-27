@@ -134,6 +134,16 @@ function AdminGuide() {
       </p>
       {!guide ? (
         <form onSubmit={unlock} className="mt-5 flex flex-wrap gap-3">
+          <input
+            type="text"
+            name="username"
+            autoComplete="username"
+            value="SR Studio owner guide"
+            readOnly
+            tabIndex={-1}
+            aria-hidden="true"
+            className="sr-only"
+          />
           <label className="sr-only" htmlFor="admin-guide-passphrase">
             Owner guide passphrase
           </label>

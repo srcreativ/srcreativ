@@ -228,9 +228,7 @@ const inquirySchema = z.object({
   phone: z
     .string()
     .trim()
-    .regex(/^\+?[0-9]{7,15}$/, "Enter 7–15 digits, optionally starting with +")
-    .optional()
-    .or(z.literal("")),
+    .regex(/^\+?[0-9]{7,15}$/, "Enter 7–15 digits, optionally starting with +"),
   date: z.string().min(1, "Please choose your wedding date"),
   location: z.string().trim().min(1, "Please enter a location").max(150),
   services: z.array(z.string()).min(1, "Select at least one service"),
@@ -725,7 +723,7 @@ function Inquiry() {
     const res = inquirySchema.safeParse({
       name: fd.get("name"),
       email: fd.get("email"),
-      phone: fd.get("phone") || undefined,
+      phone: fd.get("phone"),
       date: fd.get("date"),
       location: fd.get("location"),
       services: selected,
@@ -740,16 +738,18 @@ function Inquiry() {
       return;
     }
     setErrors({});
-    const { error } = await supabase.from("inquiries").insert({
-      name: res.data.name,
-      email: res.data.email,
-      phone: res.data.phone || null,
-      wedding_date: res.data.date,
-      location: res.data.location,
-      services: res.data.services,
-      message: res.data.message ?? null,
-    });
-    if (error) {
+    let response: Response;
+    try {
+      response = await fetch("/api/inquiries", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(res.data),
+      });
+    } catch {
+      toast.error("Couldn't send your inquiry. Please try again.");
+      return;
+    }
+    if (!response.ok) {
       toast.error("Couldn't send your inquiry. Please try again.");
       return;
     }
@@ -822,7 +822,7 @@ function Inquiry() {
             <label key={f.n} className="block">
               <span className="mb-2 block text-sm text-foreground">
                 {f.l}
-                {f.n === "name" || f.n === "email" ? (
+                {f.n === "name" || f.n === "email" || f.n === "date" || f.n === "phone" ? (
                   <span className="text-primary"> *</span>
                 ) : null}
               </span>
@@ -832,6 +832,7 @@ function Inquiry() {
                 placeholder={f.p}
                 maxLength={f.n === "phone" ? 16 : f.n === "email" ? 254 : 100}
                 inputMode={f.n === "phone" ? "tel" : undefined}
+                required={f.n !== "message"}
                 autoComplete={f.n === "email" ? "email" : f.n === "phone" ? "tel" : "name"}
                 onInput={
                   f.n === "phone"

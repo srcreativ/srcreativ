@@ -18,6 +18,103 @@ type TelemetryPayload = {
   detail?: unknown;
 };
 
+type D1Statement = {
+  bind: (...values: unknown[]) => D1Statement;
+  first: <T>() => Promise<T | null>;
+  run: () => Promise<unknown>;
+};
+
+type D1Database = {
+  prepare: (query: string) => D1Statement;
+};
+
+type WorkerEnv = { DB?: D1Database };
+
+type InquiryPayload = {
+  name?: unknown;
+  email?: unknown;
+  phone?: unknown;
+  date?: unknown;
+  location?: unknown;
+  services?: unknown;
+  message?: unknown;
+};
+
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,63}$/;
+const phonePattern = /^\+?[0-9]{7,15}$/;
+const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+
+function inquiryString(value: unknown, max: number): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 && trimmed.length <= max ? trimmed : undefined;
+}
+
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store",
+    },
+  });
+}
+
+async function handleInquiries(request: Request, env: WorkerEnv): Promise<Response> {
+  if (!env.DB) return jsonResponse({ error: "Inquiry service unavailable" }, 503);
+
+  if (request.method === "GET" && new URL(request.url).pathname === "/api/inquiries/status") {
+    const row = await env.DB
+      .prepare("SELECT COUNT(*) AS count, MAX(created_at) AS latest_at FROM inquiries")
+      .first<{ count: number | string; latest_at: string | null }>();
+    return jsonResponse({
+      count: Number(row?.count ?? 0),
+      latestAt: row?.latest_at ?? null,
+    });
+  }
+
+  if (request.method !== "POST") return new Response(null, { status: 405 });
+  if (!request.headers.get("content-type")?.includes("application/json")) {
+    return new Response(null, { status: 415 });
+  }
+
+  const raw = await request.text();
+  if (raw.length > 4096) return new Response(null, { status: 413 });
+  let payload: InquiryPayload;
+  try {
+    payload = JSON.parse(raw) as InquiryPayload;
+  } catch {
+    return jsonResponse({ error: "Invalid request" }, 400);
+  }
+
+  const name = inquiryString(payload.name, 100);
+  const email = inquiryString(payload.email, 254);
+  const phone = inquiryString(payload.phone, 16);
+  const date = inquiryString(payload.date, 10);
+  const location = inquiryString(payload.location, 150);
+  const message = payload.message === undefined || payload.message === null
+    ? null
+    : inquiryString(payload.message, 1000);
+  const services = Array.isArray(payload.services)
+    ? payload.services.filter((service): service is string =>
+        typeof service === "string" && service.trim().length > 0 && service.trim().length <= 60,
+      ).map((service) => service.trim())
+    : [];
+
+  if (!name || !email || !emailPattern.test(email) || !phone || !phonePattern.test(phone) || !date || !datePattern.test(date) || !location || services.length === 0 || services.length > 8 || (payload.message != null && !message)) {
+    return jsonResponse({ error: "Invalid inquiry" }, 400);
+  }
+
+  const id = crypto.randomUUID();
+  await env.DB
+    .prepare(
+      "INSERT INTO inquiries (id, name, email, phone, wedding_date, location, services_json, message) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+    )
+    .bind(id, name, email, phone, date, location, JSON.stringify(services), message)
+    .run();
+  return jsonResponse({ id }, 201);
+}
+
 function seoResponse(request: Request): Response | undefined {
   const url = new URL(request.url);
   const origin = url.origin;
@@ -180,6 +277,9 @@ export default {
       if (seo) return secureResponse(request, seo);
       if (new URL(request.url).pathname === "/api/telemetry") {
         return secureResponse(request, await handleTelemetry(request));
+      }
+      if (/^\/api\/inquiries(?:\/status)?$/.test(new URL(request.url).pathname)) {
+        return secureResponse(request, await handleInquiries(request, env as WorkerEnv));
       }
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
