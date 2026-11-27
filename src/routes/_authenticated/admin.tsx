@@ -33,7 +33,6 @@ import {
   ChevronDown,
   FileText,
   Settings,
-  House,
   CalendarDays,
   ExternalLink,
   MessageSquare,
@@ -103,7 +102,6 @@ async function withUploadTimeout<T>(operation: Promise<T>): Promise<T> {
 }
 
 const ADMIN_NAV = [
-  { label: "Public website", to: "/", icon: House },
   { label: "Gallery", to: "/admin/gallery", icon: ImageIcon },
   { label: "Tracking", to: "/admin/track", icon: Eye },
   { label: "Calendar", to: "/admin/calendar", icon: CalendarDays },
@@ -135,15 +133,19 @@ function Admin() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="border-b border-border bg-background/95 backdrop-blur">
-        <div className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-3 px-6 py-3">
-          <Link to="/" className="font-semibold tracking-[0.25em]">
-            {SITE.name.toUpperCase()}{" "}
-            <span className="text-primary">ADMIN</span>
+        <div className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <Link
+            to="/"
+            aria-label="Open SR Studio website"
+            title="Open public website"
+            className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-card/60 p-1.5 transition-colors hover:border-primary/60"
+          >
+            <img src="/sr-studio-mark.svg" alt="SR Studio" className="size-full" />
           </Link>
-          <div className="flex items-center gap-1 sm:gap-2">
+          <div className="flex min-w-0 items-center gap-1 sm:gap-2">
             <nav
               aria-label="Admin navigation"
-              className="flex items-center gap-1"
+              className="grid grid-cols-4 gap-1 sm:flex sm:items-center"
             >
               {ADMIN_NAV.map(({ label, to, icon: Icon }) => (
                 <Link
@@ -221,6 +223,19 @@ function MobileAdminTools() {
       : Notification.permission,
   );
   const [open, setOpen] = useState(true);
+  const isNativeAndroid =
+    typeof window !== "undefined" &&
+    Boolean(
+      (window as Window & { SRStudioAndroid?: unknown }).SRStudioAndroid,
+    );
+
+  const checkForUpdates = () => {
+    const bridge = (window as Window & {
+      SRStudioAndroid?: { checkForUpdates: () => void };
+    }).SRStudioAndroid;
+    if (!bridge) return;
+    bridge.checkForUpdates();
+  };
 
   const enableNotifications = async () => {
     if (typeof Notification === "undefined") {
@@ -263,6 +278,15 @@ function MobileAdminTools() {
           </p>
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <AppInstallPrompt />
+            {isNativeAndroid && (
+              <button
+                type="button"
+                onClick={checkForUpdates}
+                className="inline-flex items-center gap-2 rounded-full border border-primary px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
+              >
+                <Download className="h-4 w-4" /> Check for updates
+              </button>
+            )}
             <button
               type="button"
               onClick={enableNotifications}

@@ -156,6 +156,10 @@ function RootComponent() {
 
   useEffect(() => {
     startTelemetry();
+    const nativeBridge = window as Window & { SRStudioAndroid?: unknown };
+    if (nativeBridge.SRStudioAndroid) {
+      document.documentElement.dataset.nativeApp = "true";
+    }
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js").catch(() => {});
     }

@@ -192,3 +192,30 @@
   text-transform: uppercase;
   color: var(--primary);
 }
+
+/* Native WebView: preserve the full design, but use the phone's width for
+   administration controls instead of allowing a desktop icon rail to clip. */
+@media (max-width: 640px) {
+  html[data-native-app="true"] body {
+    overflow-x: hidden;
+  }
+
+  html[data-native-app="true"] header > div {
+    min-height: 4.25rem;
+  }
+
+  html[data-native-app="true"] main {
+    padding-inline: 1rem;
+    padding-block: 1.5rem;
+  }
+
+  html[data-native-app="true"] [aria-label="Admin navigation"] {
+    justify-items: center;
+  }
+
+  html[data-native-app="true"] [aria-label="Admin navigation"] > a,
+  html[data-native-app="true"] [aria-label="Sign out"] {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+}

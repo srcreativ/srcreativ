@@ -11,8 +11,13 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.Settings;
+import android.webkit.JavascriptInterface;
+import android.webkit.WebView;
+import android.widget.Toast;
 
 import androidx.core.content.FileProvider;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 
 import com.getcapacitor.BridgeActivity;
 
@@ -33,6 +38,14 @@ public class MainActivity extends BridgeActivity {
     private final ExecutorService updateExecutor = Executors.newSingleThreadExecutor();
     private long updateDownloadId = -1L;
 
+    /** Exposes only the explicit update action to the authenticated web UI. */
+    private final class AndroidUpdateBridge {
+        @JavascriptInterface
+        public void checkForUpdates() {
+            checkForGithubUpdate(true);
+        }
+    }
+
     private final BroadcastReceiver downloadReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -44,16 +57,31 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+        getWindow().setStatusBarColor(android.graphics.Color.TRANSPARENT);
+        getWindow().setNavigationBarColor(android.graphics.Color.rgb(21, 20, 18));
+        WindowInsetsControllerCompat insets =
+            new WindowInsetsControllerCompat(getWindow(), getWindow().getDecorView());
+        insets.setAppearanceLightStatusBars(false);
+        insets.setAppearanceLightNavigationBars(false);
+        configureWebView();
         IntentFilter filter = new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(downloadReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
         } else {
             registerReceiver(downloadReceiver, filter);
         }
-        checkForGithubUpdate();
+        checkForGithubUpdate(false);
     }
 
-    private void checkForGithubUpdate() {
+    private void configureWebView() {
+        WebView webView = getBridge().getWebView();
+        webView.getSettings().setUseWideViewPort(false);
+        webView.getSettings().setLoadWithOverviewMode(false);
+        webView.addJavascriptInterface(new AndroidUpdateBridge(), "SRStudioAndroid");
+    }
+
+    private void checkForGithubUpdate(boolean initiatedByUser) {
         updateExecutor.execute(() -> {
             try {
                 HttpURLConnection connection = (HttpURLConnection) new URL(RELEASE_API).openConnection();
@@ -73,9 +101,21 @@ public class MainActivity extends BridgeActivity {
                 String assetUrl = findApkAsset(release.optJSONArray("assets"));
                 if (assetUrl != null && compareVersions(latest, BuildConfig.VERSION_NAME) > 0) {
                     runOnUiThread(() -> promptForUpdate(latest, assetUrl));
+                } else if (initiatedByUser) {
+                    runOnUiThread(() -> Toast.makeText(
+                        MainActivity.this,
+                        "SR Studio Admin is up to date",
+                        Toast.LENGTH_SHORT
+                    ).show());
                 }
             } catch (Exception ignored) {
-                // Updates are optional. A network or GitHub API failure must not block the app.
+                if (initiatedByUser) {
+                    runOnUiThread(() -> Toast.makeText(
+                        MainActivity.this,
+                        "Couldn't check for updates. Please try again.",
+                        Toast.LENGTH_SHORT
+                    ).show());
+                }
             }
         });
     }
