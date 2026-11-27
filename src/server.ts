@@ -279,7 +279,12 @@ export default {
         return secureResponse(request, await handleTelemetry(request));
       }
       if (/^\/api\/inquiries(?:\/status)?$/.test(new URL(request.url).pathname)) {
-        return secureResponse(request, await handleInquiries(request, env as WorkerEnv));
+        // Nitro's Cloudflare service loader forwards only the Request to this
+        // server entry. Its outer Worker handler exposes bindings here instead.
+        const workerEnv = (env ?? (globalThis as typeof globalThis & {
+          __env__?: WorkerEnv;
+        }).__env__) as WorkerEnv;
+        return secureResponse(request, await handleInquiries(request, workerEnv));
       }
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
