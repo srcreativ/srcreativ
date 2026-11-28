@@ -60,6 +60,10 @@ public final class InquiryPollWorker extends Worker {
                 .getSharedPreferences(PREFS, Context.MODE_PRIVATE);
             if (!preferences.contains(KEY_COUNT)) {
                 preferences.edit().putInt(KEY_COUNT, count).apply();
+                // A newly installed app may have received an inquiry before its
+                // first worker run. Surface that pending item instead of silently
+                // treating it as a baseline.
+                if (count > 0) showNotification();
                 return Result.success();
             }
             int previous = preferences.getInt(KEY_COUNT, count);

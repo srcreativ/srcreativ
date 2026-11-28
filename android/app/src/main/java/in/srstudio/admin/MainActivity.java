@@ -20,8 +20,10 @@ import androidx.core.content.FileProvider;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.work.Constraints;
+import androidx.work.ExistingWorkPolicy;
 import androidx.work.ExistingPeriodicWorkPolicy;
 import androidx.work.NetworkType;
+import androidx.work.OneTimeWorkRequest;
 import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkManager;
 
@@ -95,6 +97,12 @@ public class MainActivity extends BridgeActivity {
         Constraints constraints = new Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build();
+        OneTimeWorkRequest initialRequest = new OneTimeWorkRequest.Builder(InquiryPollWorker.class)
+            .setConstraints(constraints)
+            .build();
+        WorkManager.getInstance(getApplicationContext()).enqueueUniqueWork(
+            "sr-studio-inquiry-poll-initial", ExistingWorkPolicy.KEEP, initialRequest
+        );
         PeriodicWorkRequest request = new PeriodicWorkRequest.Builder(
             InquiryPollWorker.class, 15, TimeUnit.MINUTES
         ).setConstraints(constraints).build();
@@ -129,7 +137,8 @@ public class MainActivity extends BridgeActivity {
                 String latest = release.optString("tag_name", "").replaceFirst("^android-v", "");
                 String assetUrl = findApkAsset(release.optJSONArray("assets"));
                 if (assetUrl != null && compareVersions(latest, BuildConfig.VERSION_NAME) > 0) {
-                    runOnUiThread(() -> promptForUpdate(latest, assetUrl));
+                    String releaseNotes = releaseNotes(release.optString("body", ""));
+                    runOnUiThread(() -> promptForUpdate(latest, assetUrl, releaseNotes));
                 } else if (initiatedByUser) {
                     runOnUiThread(() -> Toast.makeText(
                         MainActivity.this,
@@ -160,10 +169,22 @@ public class MainActivity extends BridgeActivity {
         return null;
     }
 
-    private void promptForUpdate(String version, String assetUrl) {
+    private String releaseNotes(String rawNotes) {
+        String notes = rawNotes
+            .replaceAll("(?m)^#{1,6}\\s*", "")
+            .replaceAll("(?m)^[-*]\\s*", "• ")
+            .replaceAll("\\[([^\\]]+)]\\([^\\)]+\\)", "$1")
+            .trim();
+        if (notes.isEmpty()) return "Bug fixes and improvements.";
+        return notes.length() > 600 ? notes.substring(0, 597).trim() + "…" : notes;
+    }
+
+    private void promptForUpdate(String version, String assetUrl, String releaseNotes) {
         new AlertDialog.Builder(this)
             .setTitle("SR Studio update available")
-            .setMessage("Version " + version + " is ready to install from the official SR Studio GitHub release.")
+            .setMessage(
+                "Version " + version + " is ready to install.\n\nWhat's new:\n" + releaseNotes
+            )
             .setNegativeButton("Later", null)
             .setPositiveButton("Download", (dialog, which) -> downloadUpdate(assetUrl))
             .show();
