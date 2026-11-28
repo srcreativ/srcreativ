@@ -30,6 +30,12 @@ type D1Database = {
 
 type WorkerEnv = { DB?: D1Database };
 
+type Tenant = {
+  id: string;
+  display_name: string;
+  settings_json: string;
+};
+
 type InquiryPayload = {
   name?: unknown;
   email?: unknown;
@@ -60,12 +66,24 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
-async function handleInquiries(request: Request, env: WorkerEnv): Promise<Response> {
-  if (!env.DB) return jsonResponse({ error: "Inquiry service unavailable" }, 503);
+async function handleInquiries(
+  request: Request,
+  env: WorkerEnv,
+): Promise<Response> {
+  if (!env.DB)
+    return jsonResponse({ error: "Inquiry service unavailable" }, 503);
 
-  if (request.method === "GET" && new URL(request.url).pathname === "/api/inquiries/status") {
-    const row = await env.DB
-      .prepare("SELECT COUNT(*) AS count, MAX(created_at) AS latest_at FROM inquiries")
+  const tenant = await resolveTenant(request, env.DB);
+  if (!tenant) return jsonResponse({ error: "Unknown site" }, 404);
+
+  if (
+    request.method === "GET" &&
+    new URL(request.url).pathname === "/api/inquiries/status"
+  ) {
+    const row = await env.DB.prepare(
+      "SELECT COUNT(*) AS count, MAX(created_at) AS latest_at FROM inquiries WHERE tenant_id = ?",
+    )
+      .bind(tenant.id)
       .first<{ count: number | string; latest_at: string | null }>();
     return jsonResponse({
       count: Number(row?.count ?? 0),
@@ -92,27 +110,99 @@ async function handleInquiries(request: Request, env: WorkerEnv): Promise<Respon
   const phone = inquiryString(payload.phone, 16);
   const date = inquiryString(payload.date, 10);
   const location = inquiryString(payload.location, 150);
-  const message = payload.message === undefined || payload.message === null
-    ? null
-    : inquiryString(payload.message, 1000);
+  const message =
+    payload.message === undefined || payload.message === null
+      ? null
+      : inquiryString(payload.message, 1000);
   const services = Array.isArray(payload.services)
-    ? payload.services.filter((service): service is string =>
-        typeof service === "string" && service.trim().length > 0 && service.trim().length <= 60,
-      ).map((service) => service.trim())
+    ? payload.services
+        .filter(
+          (service): service is string =>
+            typeof service === "string" &&
+            service.trim().length > 0 &&
+            service.trim().length <= 60,
+        )
+        .map((service) => service.trim())
     : [];
 
-  if (!name || !email || !emailPattern.test(email) || !phone || !phonePattern.test(phone) || !date || !datePattern.test(date) || !location || services.length === 0 || services.length > 8 || (payload.message != null && !message)) {
+  if (
+    !name ||
+    !email ||
+    !emailPattern.test(email) ||
+    !phone ||
+    !phonePattern.test(phone) ||
+    !date ||
+    !datePattern.test(date) ||
+    !location ||
+    services.length === 0 ||
+    services.length > 8 ||
+    (payload.message != null && !message)
+  ) {
     return jsonResponse({ error: "Invalid inquiry" }, 400);
   }
 
   const id = crypto.randomUUID();
-  await env.DB
-    .prepare(
-      "INSERT INTO inquiries (id, name, email, phone, wedding_date, location, services_json, message) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+  await env.DB.prepare(
+    "INSERT INTO inquiries (id, tenant_id, name, email, phone, wedding_date, location, services_json, message) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+  )
+    .bind(
+      id,
+      tenant.id,
+      name,
+      email,
+      phone,
+      date,
+      location,
+      JSON.stringify(services),
+      message,
     )
-    .bind(id, name, email, phone, date, location, JSON.stringify(services), message)
     .run();
   return jsonResponse({ id }, 201);
+}
+
+async function resolveTenant(
+  request: Request,
+  database: D1Database,
+): Promise<Tenant | null> {
+  const hostname = new URL(request.url).hostname.toLowerCase();
+  const tenant = await database
+    .prepare(
+      "SELECT tenants.id, tenants.display_name, tenants.settings_json FROM tenant_domains INNER JOIN tenants ON tenants.id = tenant_domains.tenant_id WHERE tenant_domains.hostname = ? AND tenants.enabled = 1 LIMIT 1",
+    )
+    .bind(hostname)
+    .first<Tenant>();
+
+  // Local development remains useful before a hostname mapping has been added.
+  if (tenant || (hostname !== "localhost" && hostname !== "127.0.0.1"))
+    return tenant;
+  return database
+    .prepare(
+      "SELECT id, display_name, settings_json FROM tenants WHERE id = 'sr-studio' AND enabled = 1 LIMIT 1",
+    )
+    .first<Tenant>();
+}
+
+async function handlePublicSiteSettings(
+  request: Request,
+  env: WorkerEnv,
+): Promise<Response> {
+  if (request.method !== "GET") return new Response(null, { status: 405 });
+  if (!env.DB)
+    return jsonResponse({ error: "Site configuration unavailable" }, 503);
+
+  const tenant = await resolveTenant(request, env.DB);
+  if (!tenant) return jsonResponse({ error: "Unknown site" }, 404);
+
+  try {
+    const settings = JSON.parse(tenant.settings_json) as unknown;
+    return jsonResponse({
+      tenant: { id: tenant.id, name: tenant.display_name },
+      settings,
+    });
+  } catch {
+    console.error(`Invalid settings JSON for tenant ${tenant.id}`);
+    return jsonResponse({ error: "Site configuration unavailable" }, 503);
+  }
 }
 
 function seoResponse(request: Request): Response | undefined {
@@ -278,13 +368,27 @@ export default {
       if (new URL(request.url).pathname === "/api/telemetry") {
         return secureResponse(request, await handleTelemetry(request));
       }
-      if (/^\/api\/inquiries(?:\/status)?$/.test(new URL(request.url).pathname)) {
+      const workerEnv = (env ??
+        (
+          globalThis as typeof globalThis & {
+            __env__?: WorkerEnv;
+          }
+        ).__env__) as WorkerEnv;
+      if (new URL(request.url).pathname === "/api/public/site-settings") {
+        return secureResponse(
+          request,
+          await handlePublicSiteSettings(request, workerEnv),
+        );
+      }
+      if (
+        /^\/api\/inquiries(?:\/status)?$/.test(new URL(request.url).pathname)
+      ) {
         // Nitro's Cloudflare service loader forwards only the Request to this
         // server entry. Its outer Worker handler exposes bindings here instead.
-        const workerEnv = (env ?? (globalThis as typeof globalThis & {
-          __env__?: WorkerEnv;
-        }).__env__) as WorkerEnv;
-        return secureResponse(request, await handleInquiries(request, workerEnv));
+        return secureResponse(
+          request,
+          await handleInquiries(request, workerEnv),
+        );
       }
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);

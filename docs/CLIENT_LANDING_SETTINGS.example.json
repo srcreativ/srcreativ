@@ -1,0 +1,32 @@
+{
+  "brand": {
+    "name": "Northlight Films",
+    "description": "Editorial wedding films and photography.",
+    "email": "hello@northlight.example",
+    "phone": "+919999999999",
+    "location": "Goa, India"
+  },
+  "hero": {
+    "eyebrow": "Wedding films · Photography",
+    "title": "Stories worth",
+    "highlight": "remembering",
+    "subtitle": "A personal introduction for this client.",
+    "primaryCta": "View Portfolio",
+    "secondaryCta": "Check Availability"
+  },
+  "theme": {
+    "background": "#17191f",
+    "foreground": "#f7f5ef",
+    "primary": "#d8af63",
+    "card": "#20232c",
+    "radius": 12,
+    "headingScale": 1
+  },
+  "media": {
+    "titleIcon": "/sr-studio-mark.svg",
+    "heroVideo": "/videos/indian-wedding.mp4",
+    "gallery": {
+      "hero": "/client-assets/hero.jpg"
+    }
+  }
+}

@@ -44,7 +44,6 @@ import ceremony2 from "@/assets/ceremony-2.jpg";
 import ceremony3 from "@/assets/ceremony-3.jpg";
 import ceremony4 from "@/assets/ceremony-4.jpg";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { AdSlot } from "@/components/AdSlot";
 import { DroneShowcase } from "@/components/DroneShowcase";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
@@ -239,12 +238,12 @@ function Index() {
   const { data: savedSettings } = useQuery({
     queryKey: ["public-site-settings"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("site_settings")
-        .select("data")
-        .eq("id", "default")
-        .maybeSingle();
-      return data?.data;
+      const response = await fetch("/api/public/site-settings", {
+        cache: "no-store",
+      });
+      if (!response.ok) return undefined;
+      const payload = (await response.json()) as { settings?: unknown };
+      return payload.settings;
     },
     retry: false,
   });
@@ -260,14 +259,15 @@ function Index() {
   useEffect(() => {
     if (sessionStorage.getItem("sr-viewed")) return;
     sessionStorage.setItem("sr-viewed", "1");
-    supabase
-      .from("page_views")
-      .insert({
+    void fetch("/api/telemetry", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        name: "page_view",
         path: window.location.pathname.slice(0, 200),
-        referrer: document.referrer ? document.referrer.slice(0, 500) : null,
-        language: (navigator.language || "").slice(0, 20) || null,
-      })
-      .then(() => {});
+        detail: (navigator.language || "").slice(0, 20),
+      }),
+    });
   }, []);
   return (
     <SiteSettingsContext.Provider value={settings}>
@@ -473,33 +473,13 @@ function SectionHead({
 function Portfolio() {
   const [active, setActive] = useState<(typeof categories)[number]>("All");
   const { media } = useSiteSettings();
-  const { data: uploaded = [] } = useQuery({
-    queryKey: ["public-gallery"],
-    queryFn: async () =>
-      (
-        await supabase
-          .from("gallery_images")
-          .select("title, category, image_url, tall")
-          .order("created_at", { ascending: false })
-      ).data ?? [],
-  });
-  const uploadedItems = uploaded.map((u) => ({
-    src: u.image_url,
-    cat: u.category,
-    title: u.title,
-    tall: u.tall,
-  }));
   const gallery = defaultGallery.map(([key, src, cat, title, tall]) => ({
     src: media.gallery[key] || src,
     cat,
     title,
     tall,
   }));
-  const all = [...uploadedItems, ...gallery];
-  const items =
-    active === "Gallery"
-      ? uploadedItems
-      : all.filter((g) => active === "All" || g.cat === active);
+  const items = gallery.filter((g) => active === "All" || g.cat === active);
   return (
     <section
       id="portfolio"
